@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+
+MAX_FASTA_SIZE = 200_000 # number of non-header characters
+
+fasta_files = []
+Dir.glob("cw/20*/*.fasta") do |fname|
+
+  s = `cat #{fname} | grep -v "^>" | wc -c`.to_i
+
+  if s > MAX_FASTA_SIZE
+    STDERR.puts "Skipping because fasta size > #{MAX_FASTA_SIZE}:" +
+      " #{fname} (#{s} non-header characters)"
+    next
+  end
+
+  fasta_files.push fname
+end
+
+
+fasta_files.each do |fpath|
+  if fpath =~ /\/([^\/]*)\.fasta/
+    simple_name = $1
+   
+    opts = "--msaProgram MAFFT --seqType aa"
+    cmd = "guidance.pl #{opts} " + 
+      "--seqFile ../#{fpath}  --outDir #{simple_name}.guidance"
+
+    rdir = "011-run1"
+    File.open("./#{rdir}/#{simple_name}.sh", 'w'){|f| f.puts cmd}
+
+    qsub_cmd = "qsub -d #{Dir.pwd}/#{rdir} ./#{simple_name}.sh"
+
+    system qsub_cmd
+  else
+    raise
+  end
+
+end

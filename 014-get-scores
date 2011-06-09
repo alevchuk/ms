@@ -1,0 +1,18 @@
+#!/bin/bash
+
+rundir="011-run1"
+
+mkdir ${rundir}-scores 2> /dev/null
+
+if [ -d $rundir ]; then
+  for i in ${rundir}/*.guidance/MSA.MAFFT.Guidance_msa.scr; do
+    famname=`echo $i | sed 's/\.guidance/\//g' | awk -F \/ '{print $2}'`
+    cp -f $i ${rundir}-scores/${famname}-msa-scr
+    echo -n "${famname} "
+    awk '/MEAN_RES_PAIR_SCORE/ {print $2}' ${rundir}-scores/${famname}-msa-scr
+  done > ${rundir}-scores-extracted
+else
+  echo "NOTE: ${rundir} does not exists, skipping extracton step" > /dev/stderr
+fi
+
+cat ${rundir}-scores-extracted | awk '{print $2, $1}' | sort -n
