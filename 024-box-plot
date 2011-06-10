@@ -1,0 +1,33 @@
+#!/usr/bin/env Rscript
+
+library("ggplot2")
+
+tab1 <- read.csv("011-run1-scores-extracted-1", header=F, sep=" ")
+tab2 <- read.csv("011-run1-scores-extracted-2", header=F, sep=" ")
+
+tabs <- list(cwd_2005_guidance_1=tab1, cwd_2005_guidance_2=tab2)
+
+g <- data.frame(Families=factor(),
+  Number_of_Sequences=numeric(),
+  Builds=factor())
+
+builds_list <- list("cwd_2005_guidance_1", "cwd_2005_guidance_2")
+for (build_name in builds_list) {
+
+  #g <- cbind(stats[,1], rownames(stats), 
+  #  tr(as.data.frame(rep("2009", nrow(stats))))
+  g2 <- data.frame(
+    Families=factor(tabs[[build_name]][,1]),
+    Mean_Res_Pair_Score=as.numeric(tabs[[build_name]][,2]),
+    Builds=factor(rep(build_name, nrow(tabs[[build_name]]))))
+  
+
+  g <- rbind(g, g2)
+
+}
+
+pdf("scores-plot.pdf")
+ggplot(g, aes(Families, Mean_Res_Pair_Score, fill = Builds)) +
+  geom_bar(position="dodge") + coord_flip(wise=T) +
+  opts(axis.text.y=theme_text(angle=0,hjust=1), axis.text.x=theme_text())
+dev.off()
