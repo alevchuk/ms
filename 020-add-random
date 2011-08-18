@@ -1,2 +1,24 @@
-#!/usr/bin/env ruby
+#!/usr/bin/env Rscript
 
+ORIGIN <- "cw"
+
+#fasta_files = []
+#Dir.glob("#{ORIGIN}/20*/*.fasta") {|fname| fasta_files.push fname }
+#
+## Get Avg. Sequence Length
+#avg_seq_length = []
+#fasta_files.each do |fpath|
+#  number_of_sequences = `wc -l #{fpath}.tab`.to_i
+#  number_of_peptides = `awk '{print $2}' #{fpath}.tab | wc -c`.to_i
+#  avg_seq_length.push number_of_peptides.to_f / number_of_sequences.to_f
+#end
+#
+## Generate a Random sequence
+#avg_seq_length.each_with_index do |avg_len, fam_id|
+#  indecies = ((0...(avg_len.to_i)).to_a).collect {|i| rand(20).to_i }
+#  puts fasta_files[fam_id]
+#  p indecies
+#  puts
+#end
+#
+## Write out new FASTAs

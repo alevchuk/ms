@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rundir="011-run1"
+rundir="011-run1-3-mafft-v6.850b"
 
 mkdir ${rundir}-scores 2> /dev/null
 
@@ -8,7 +8,7 @@ if [ -d $rundir ]; then
   for i in ${rundir}/*.guidance/MSA.MAFFT.Guidance_msa.scr; do
     famname=`echo $i | sed 's/\.guidance/\//g' | awk -F \/ '{print $2}'`
     cp -f $i ${rundir}-scores/${famname}-msa-scr
-    echo -n "${famname} "
+    echo -n "cwn.${famname} "
     awk '/MEAN_RES_PAIR_SCORE/ {print $2}' ${rundir}-scores/${famname}-msa-scr
   done > ${rundir}-scores-extracted
 else

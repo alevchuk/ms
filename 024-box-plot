@@ -1,33 +1,49 @@
 #!/usr/bin/env Rscript
 
 library("ggplot2")
+#library("directlabels")
 
-tab1 <- read.csv("011-run1-scores-extracted-1", header=F, sep=" ")
-tab2 <- read.csv("011-run1-scores-extracted-2", header=F, sep=" ")
+filenames <- dir(pattern="^011-run1-scores-extracted.*[^~]$")
+tabs <- lapply(filenames, function(i){read.csv(i[[1]], header=F, sep=" ") })
+names(tabs) <- filenames
+#print(tabs)
 
-tabs <- list(cwd_2005_guidance_1=tab1, cwd_2005_guidance_2=tab2)
-
-g <- data.frame(Families=factor(),
+g <- data.frame(
+  Families=factor(),
   Number_of_Sequences=numeric(),
-  Builds=factor())
+  Builds=factor()
+)
 
-builds_list <- list("cwd_2005_guidance_1", "cwd_2005_guidance_2")
-for (build_name in builds_list) {
+builds_list <- names(tabs)
+
+for (build_name in rev(builds_list)) {
 
   #g <- cbind(stats[,1], rownames(stats), 
   #  tr(as.data.frame(rep("2009", nrow(stats))))
   g2 <- data.frame(
     Families=factor(tabs[[build_name]][,1]),
     Mean_Res_Pair_Score=as.numeric(tabs[[build_name]][,2]),
-    Builds=factor(rep(build_name, nrow(tabs[[build_name]]))))
-  
+    Runs=factor(rep(build_name, nrow(tabs[[build_name]])))
+  )
 
   g <- rbind(g, g2)
-
 }
 
-pdf("scores-plot.pdf")
-ggplot(g, aes(Families, Mean_Res_Pair_Score, fill = Builds)) +
-  geom_bar(position="dodge") + coord_flip(wise=T) +
-  opts(axis.text.y=theme_text(angle=0,hjust=1), axis.text.x=theme_text())
+
+
+pdf("scores-plot.pdf", width=8, height=16)
+
+ggplot(g, aes(Families, Mean_Res_Pair_Score, fill=Runs)) +
+  geom_bar(position="dodge") +
+  opts(axis.text.y=theme_text(angle=0, hjust=0, size=10)) +
+  opts(axis.text.x=theme_text()) +
+  opts(legend.position="top") +
+  coord_flip() +
+  scale_fill_hue( # Makes legend color apper in the same order as the bars
+    breaks = rev(levels(g$Runs)),
+    labels = rev(levels(g$Runs)))
+
+
+#direct.label(p, list(last.points, hjust = 0.7, vjust = 1, fontsize=2))
+
 dev.off()
