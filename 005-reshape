@@ -5,37 +5,100 @@
 set -e
 set -u
 
+ALWAYS_RUN=false # Default should be true for portability
+
 CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab 
 
 LATEST_CDD_TAR=`ls -1d ./data/cdd-*/fasta.tar.gz | sort | tail -1`
-MSADIR="$0-data-in/fasta-msa"
-OUTDIR="$0-data-out"
+IN_DIR="$0-data-in/fasta.tar.gz-extracted"
+OUT_DIR="$0-data-out"
 
-mkdir -p $MSADIR $OUTDIR 2> /dev/null && true
+mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
 
-# 7 min
-echo "Extracting $LATEST_CDD_TAR..."
-time tar xf $LATEST_CDD_TAR -C $MSADIR
+TIMEFORMAT="%0lR
+" # When timing, print no-fraction, long-format, elapsed time, and a linebreak
 
-echo "Converting FASTA to TAB format..."
-time ls $MSADIR | 
-  while read i; do
-    cat $MSADIR/$i | $CONVERT_FASTA_TO_TAB > $MSADIR-tab/$i.tab
-  done
 
-time ls -1 $MSADIR-tab/ > $OUTDIR/msa-list.new
-mv $OUTDIR/msa-list.new $OUTDIR/msa-list
 
-# 5 min
-time cat $MSADIR-tab/msa-list | 
-  while read i; do wc -l $MSADIR-tab/$i ; done > $OUTDIR/msa-sizes-numseq.new
-mv $OUTDIR/msa-sizes-numseq.new $OUTDIR/msa-sizes-numseq
+# 12 min
+in_progress="$IN_DIR-inprogress-or-failed"
+parrent_done=$LATEST_CDD_TAR
+done_time="$IN_DIR-done"
+if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
+  time (
+    mv $done_time $in_progress 2> /dev/null && true
+    touch $in_progress
 
-# 7 min
-time cat $MSADIR-tab/msa-list | 
-  while read i; do 
-    head -1 $MSADIR-tab/$i | awk '{print $2}' | tr "\n" "x" | 
-      sed "s/x$//" | wc -c | tr "\n" " "
-    echo $i
-  done > $OUTDIR/msa-sizes-seqlen.new
-mv $OUTDIR/msa-sizes-seqlen.new $OUTDIR/msa-sizes-seqlen
+    echo "Extracting $LATEST_CDD_TAR"
+    mkdir -p $IN_DIR{,-new} 2> /dev/null && true
+    tar xf $LATEST_CDD_TAR -C $IN_DIR-new
+    rm -rf $IN_DIR
+    mv $IN_DIR{-new,}
+
+    mv $in_progress $done_time
+    touch $done_time
+  )
+fi
+
+
+
+# 11 min
+in_progress="$OUT_DIR/all-alignments-tab-inprogress-or-failed"
+parrent_done=$done_time
+done_time="$OUT_DIR/all-alignments-tab-done"
+if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
+  time (
+    mv $done_time $in_progress 2> /dev/null && true
+    touch $in_progress
+
+    echo "Converting FASTA to TAB format"
+    mkdir -p $OUT_DIR/all-alignments-tab{,-new} 2> /dev/null && true
+    ls $IN_DIR | 
+      while read i; do
+        cat $IN_DIR/$i | $CONVERT_FASTA_TO_TAB > \
+          $OUT_DIR/all-alignments-tab-new/$i.tab
+      done
+    rm -rf $OUT_DIR/all-alignments-tab
+    mv $OUT_DIR/all-alignments-tab{-new,}
+    echo "Converted $IN_DIR to $OUT_DIR/all-alignments-tab"
+
+    mv $in_progress $done_time
+    touch $done_time
+  )
+fi
+
+
+
+# 12 min
+in_progress="$OUT_DIR-inprogress-or-failed"
+parrent_done=$done_time
+done_time="$OUT_DIR-done"
+if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
+  time (
+    mv $done_time $in_progress 2> /dev/null && true
+    touch $in_progress
+
+    echo "Listing alignments in $OUT_DIR/all-alignments-tab"
+    ls -1 $OUT_DIR/all-alignments-tab/ > $OUT_DIR/msa-list-new
+    mv $OUT_DIR/msa-list-new $OUT_DIR/msa-list
+
+    echo "Counting sequences in $OUT_DIR/all-alignments-tab"
+    cat $OUT_DIR/msa-list | 
+      while read i; do
+        wc -l $OUT_DIR/all-alignments-tab/$i
+      done > $OUT_DIR/msa-sizes-numseq-new
+    mv $OUT_DIR/msa-sizes-numseq-new $OUT_DIR/msa-sizes-numseq
+
+    echo "Counting sequence lengths in $OUT_DIR/all-alignments-tab"
+    cat $OUT_DIR/msa-list | 
+      while read i; do 
+        head -1 $OUT_DIR/all-alignments-tab/$i |
+          awk '{print $2}' | tr "\n" "x" | sed "s/x$//" | wc -c | tr "\n" " "
+        echo $i
+      done > $OUT_DIR/msa-sizes-seqlen-new
+    mv $OUT_DIR/msa-sizes-seqlen-new $OUT_DIR/msa-sizes-seqlen
+
+    mv $in_progress $done_time
+    touch $done_time
+  )
+fi
