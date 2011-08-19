@@ -1,0 +1,7 @@
+In this directory external dependencies will be installed.
+
+The installations will in many cases include compiled code,
+so it is specific to the platform that is being used.
+
+All the platform independent source code in located in 
+../src/

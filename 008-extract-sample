@@ -1,0 +1,13 @@
+#!/usr/bin/env Rscript
+
+t <- cbind(
+  read.table("msa-sizes-seqlen"),
+  read.table("msa-sizes-numseq")
+)
+
+colnames(t) <- c('seqlen', 'source', 'numseq', 'x')
+
+t <- t[,c('source', 'seqlen', 'numseq')] # drop x
+
+t[,'numchars'] <- t[,'seqlen'] * t[,'numseq']
+t[t[,'numchars'] > 2000000,]

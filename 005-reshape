@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Tags: slow
+
+set -e
+set -u
+
+CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab 
+
+LATEST_CDD_TAR=`ls -1d ./data/cdd-*/fasta.tar.gz | sort | tail -1`
+MSADIR="$0-data-in/fasta-msa"
+OUTDIR="$0-data-out"
+
+mkdir -p $MSADIR $OUTDIR 2> /dev/null && true
+
+# 7 min
+echo "Extracting $LATEST_CDD_TAR..."
+time tar xf $LATEST_CDD_TAR -C $MSADIR
+
+echo "Converting FASTA to TAB format..."
+time ls $MSADIR | 
+  while read i; do
+    cat $MSADIR/$i | $CONVERT_FASTA_TO_TAB > $MSADIR-tab/$i.tab
+  done
+
+time ls -1 $MSADIR-tab/ > $OUTDIR/msa-list.new
+mv $OUTDIR/msa-list.new $OUTDIR/msa-list
+
+# 5 min
+time cat $MSADIR-tab/msa-list | 
+  while read i; do wc -l $MSADIR-tab/$i ; done > $OUTDIR/msa-sizes-numseq.new
+mv $OUTDIR/msa-sizes-numseq.new $OUTDIR/msa-sizes-numseq
+
+# 7 min
+time cat $MSADIR-tab/msa-list | 
+  while read i; do 
+    head -1 $MSADIR-tab/$i | awk '{print $2}' | tr "\n" "x" | 
+      sed "s/x$//" | wc -c | tr "\n" " "
+    echo $i
+  done > $OUTDIR/msa-sizes-seqlen.new
+mv $OUTDIR/msa-sizes-seqlen.new $OUTDIR/msa-sizes-seqlen

@@ -1,3 +1,8 @@
 *~
+
+opt/*
+
 data/cw
-010-run-guidance-data-in
+data/cdd-*
+*-data-in
+*-data-out
