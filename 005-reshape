@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Tags: slow
+# Tags: very-slow
 
 set -e
 set -u

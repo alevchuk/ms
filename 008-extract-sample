@@ -1,13 +1,64 @@
-#!/usr/bin/env Rscript
+#!/bin/bash
 
-t <- cbind(
-  read.table("msa-sizes-seqlen"),
-  read.table("msa-sizes-numseq")
-)
+# Tags: 
 
-colnames(t) <- c('seqlen', 'source', 'numseq', 'x')
+set -e
+set -u
 
-t <- t[,c('source', 'seqlen', 'numseq')] # drop x
+ALWAYS_RUN=false
 
-t[,'numchars'] <- t[,'seqlen'] * t[,'numseq']
-t[t[,'numchars'] > 2000000,]
+IN_DIR="$0-data-in"
+OUT_DIR="$0-data-out"
+
+mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
+
+TIMEFORMAT="%0lR
+" # When timing, print no-fraction, long-format, elapsed time, and a linebreak
+
+
+
+# 11 min
+in_progress="$IN_DIR-inprogress-or-failed"
+parrent_done="./005-reshape-data-out-done"
+done_time="$IN_DIR-done"
+if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
+  time (
+    mv $done_time $in_progress 2> /dev/null && true
+    touch $in_progress
+
+    echo "Copying (files only) 005-reshape-data-out/msa-* to $IN_DIR"
+    cp ./005-reshape-data-out/msa-* $IN_DIR/
+
+    echo "Copying (rsync) 005-reshape-data-out/all-alignments-tab to $IN_DIR"
+    mkdir -p $IN_DIR/all-alignments-tab 2> /dev/null && true
+    rsync -a ./005-reshape-data-out/all-alignments-tab/ \
+      $IN_DIR/all-alignments-tab/ 
+
+    mv $in_progress $done_time
+    touch $done_time
+  )
+fi
+
+
+
+in_progress="$OUT_DIR-inprogress-or-failed"
+parrent_done=$done_time
+done_time="$OUT_DIR-done"
+if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
+  time (
+    mv $done_time $in_progress 2> /dev/null && true
+    touch $in_progress
+
+    echo "Taking a sample"
+    mkdir -p "$OUT_DIR/sample-100-alignments"{,-new} 2> /dev/null && true
+    $0-scripts/sample.R 100 $IN_DIR/msa-list | while read file_name; do
+      cp "$IN_DIR/all-alignments-tab/$file_name" \
+        "$OUT_DIR/sample-100-alignments-new/"
+    done
+    rm -rf "$OUT_DIR/sample-100-alignments"
+    mv "$OUT_DIR/sample-100-alignments"{-new,}
+
+    mv $in_progress $done_time
+    touch $done_time
+  )
+fi
