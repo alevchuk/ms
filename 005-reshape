@@ -85,18 +85,19 @@ if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
     echo "Counting sequences in $OUT_DIR/all-alignments-tab"
     cat $OUT_DIR/msa-list | 
       while read i; do
-        wc -l $OUT_DIR/all-alignments-tab/$i
+        cat $OUT_DIR/all-alignments-tab/$i | wc -l | tr "\n" "\t"
+        echo $i
       done > $OUT_DIR/msa-sizes-numseq-new
     mv $OUT_DIR/msa-sizes-numseq-new $OUT_DIR/msa-sizes-numseq
 
-    echo "Counting sequence lengths in $OUT_DIR/all-alignments-tab"
+    echo "Counting msa lengths in $OUT_DIR/all-alignments-tab"
     cat $OUT_DIR/msa-list | 
       while read i; do 
         head -1 $OUT_DIR/all-alignments-tab/$i |
-          awk '{print $2}' | tr "\n" "x" | sed "s/x$//" | wc -c | tr "\n" " "
+          awk '{print $2}' | tr -d "\n" | wc -c | tr "\n" "\t"
         echo $i
-      done > $OUT_DIR/msa-sizes-seqlen-new
-    mv $OUT_DIR/msa-sizes-seqlen-new $OUT_DIR/msa-sizes-seqlen
+      done > $OUT_DIR/msa-sizes-length-new
+    mv $OUT_DIR/msa-sizes-length-new $OUT_DIR/msa-sizes-length
 
     mv $in_progress $done_time
     touch $done_time

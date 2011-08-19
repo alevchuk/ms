@@ -1,5 +1,14 @@
-DEPENDENCIES
-############
+DEPENDENCIES THAT ARE NOT INCLUDED
+##################################
+
+R
+Ruby
+GNU Linux environment
+
+
+
+DEPENDENCIES THAT ARE INCLUDED (see src/)
+#########################################
 
 mafft-6.857-with-extensions
 guidance.v1.1
