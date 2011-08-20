@@ -1,54 +1,34 @@
 #!/bin/bash
 
-# Tags: 
-
+source ./api/pipeline.sh
 set -e
 set -u
 
-ALWAYS_RUN=false
+# Tags: slow-import
 
 IN_DIR="$0-data-in"
 OUT_DIR="$0-data-out"
 
 mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
 
-TIMEFORMAT="%0lR
-" # When timing, print no-fraction, long-format, elapsed time, and a linebreak
-
-
 
 # 11 min
-in_progress="$IN_DIR-inprogress-or-failed"
-parrent_done="./005-reshape-data-out-done"
-done_time="$IN_DIR-done"
-if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
-  time (
-    mv $done_time $in_progress 2> /dev/null && true
-    touch $in_progress
-
-    echo "Copying (files only) 005-reshape-data-out/msa-* to $IN_DIR"
+function cb {
+    echo "Importing (few files) 005-reshape-data-out/msa-*"
     cp ./005-reshape-data-out/msa-* $IN_DIR/
 
-    echo "Copying (rsync) 005-reshape-data-out/all-alignments-tab to $IN_DIR"
+    echo "Importing (rsync) 005-reshape-data-out/all-alignments-tab"
     mkdir -p $IN_DIR/all-alignments-tab 2> /dev/null && true
     rsync -a ./005-reshape-data-out/all-alignments-tab/ \
       $IN_DIR/all-alignments-tab/ 
+}
+parrent_done_time_prefix="./005-reshape-data-out"
+done_time_prefix=$IN_DIR
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Importing data into $IN_DIR" cb
 
-    mv $in_progress $done_time
-    touch $done_time
-  )
-fi
 
-
-
-in_progress="$OUT_DIR-inprogress-or-failed"
-parrent_done=$done_time
-done_time="$OUT_DIR-done"
-if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
-  time (
-    mv $done_time $in_progress 2> /dev/null && true
-    touch $in_progress
-
+function cb {
     echo "Taking a sample"
     mkdir -p "$OUT_DIR/sample-100-alignments"{,-new} 2> /dev/null && true
     $0-scripts/sample.R 100 $IN_DIR/msa-list | while read file_name; do
@@ -57,8 +37,8 @@ if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parrent_done -nt $done_time ]; then
     done
     rm -rf "$OUT_DIR/sample-100-alignments"
     mv "$OUT_DIR/sample-100-alignments"{-new,}
-
-    mv $in_progress $done_time
-    touch $done_time
-  )
-fi
+}
+parrent_done_time_prefix=$done_time_prefix
+done_time_prefix=$OUT_DIR
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Taking a 100 item sample from $IN_DIR/all-alignments-tab" cb
