@@ -16,9 +16,6 @@ DATA_OUT="$0-data-out"
 
 mkdir -p $DATA_IN1 $DATA_OUT 2> /dev/null && true
 
-TIMEFORMAT="%0lR
-" # When timing, print no-fraction, long-format, elapsed time, and a linebreak
-
 
 # 12 min
 function cb {
