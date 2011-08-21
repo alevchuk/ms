@@ -4,10 +4,14 @@ source ./api/pipeline.sh
 set -e
 set -u
 
-# Tags: slow-import
+# Tags: slow-import takes-optional-arguments
+
+set +u
+[ ! -n "$1" ] && SEED=1 || SEED="$1"
+set -u
 
 IN_DIR="$0-data-in"
-OUT_DIR="$0-data-out"
+OUT_DIR="$0-data-out-s$SEED"
 
 mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
 
@@ -29,9 +33,8 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
 
 
 function cb {
-    echo "Taking a sample"
     mkdir -p "$OUT_DIR/sample-100-alignments"{,-new} 2> /dev/null && true
-    $0-scripts/sample.R 100 $IN_DIR/msa-list | while read file_name; do
+    $0-scripts/sample.R $SEED 100 $IN_DIR/msa-list | while read file_name; do
       cp "$IN_DIR/all-alignments-tab/$file_name" \
         "$OUT_DIR/sample-100-alignments-new/"
     done
@@ -41,4 +44,4 @@ function cb {
 parrent_done_time_prefix=$done_time_prefix
 done_time_prefix=$OUT_DIR
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Taking a 100 item sample from $IN_DIR/all-alignments-tab" cb
+  "Sample $SEED. Taking 100 items from $IN_DIR/all-alignments-tab" cb
