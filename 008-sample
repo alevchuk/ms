@@ -1,0 +1,38 @@
+#!/bin/bash
+
+source ./api/pipeline.sh
+set -e
+set -u
+
+# Tags: takes-optional-arguments
+
+set +u
+[ ! -n "$1" ] && SEED=1 || SEED="$1"
+set -u
+
+IN_DIR="$0-data-in"
+OUT_DIR="$0-data-out-s$SEED"
+
+mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
+
+
+
+function cb {
+    echo "Importing (few files) 005-reshape-data-out/msa-*"
+    cp ./005-reshape-data-out/msa-* $IN_DIR/
+}
+parrent_done_time_prefix="./005-reshape-data-out"
+done_time_prefix=$IN_DIR
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Importing data into $IN_DIR" cb
+
+
+
+function cb {
+  $0-scripts/sample.R $SEED 100 $IN_DIR/msa-list > \
+    "$OUT_DIR/sample-100-alignments-list"
+}
+parrent_done_time_prefix=$done_time_prefix
+done_time_prefix=$OUT_DIR
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Sample $SEED. Identifying 100 items from $IN_DIR/all-alignments-tab" cb

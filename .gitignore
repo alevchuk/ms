@@ -7,3 +7,5 @@ data/cdd-*
 *-data-in
 *-data-out
 *-data-out-s*
+
+[0-9]*-done
