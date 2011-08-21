@@ -11,10 +11,10 @@ source ./api/pipeline.sh
 CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab 
 
 LATEST_CDD_TAR=`ls -1d ./data/cdd-*/fasta.tar.gz | sort | tail -1`
-IN_DIR1="$0-data-in/fasta.tar.gz-extracted"
-OUT_DIR="$0-data-out"
+DATA_IN1="$0-data-in/fasta.tar.gz-extracted"
+DATA_OUT="$0-data-out"
 
-mkdir -p $IN_DIR1 $OUT_DIR 2> /dev/null && true
+mkdir -p $DATA_IN1 $DATA_OUT 2> /dev/null && true
 
 TIMEFORMAT="%0lR
 " # When timing, print no-fraction, long-format, elapsed time, and a linebreak
@@ -22,58 +22,58 @@ TIMEFORMAT="%0lR
 
 # 12 min
 function cb {
-    mkdir -p $IN_DIR1{,-new} 2> /dev/null && true
-    tar xf $LATEST_CDD_TAR -C $IN_DIR1-new
-    rm -rf $IN_DIR1
-    mv $IN_DIR1{-new,}
+    mkdir -p $DATA_IN1{,-new} 2> /dev/null && true
+    tar xf $LATEST_CDD_TAR -C $DATA_IN1-new
+    rm -rf $DATA_IN1
+    mv $DATA_IN1{-new,}
 }
 parrent_done_time_prefix=$LATEST_CDD_TAR
-done_time_prefix=$IN_DIR1
+done_time_prefix=$DATA_IN1
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
   "Extracting $LATEST_CDD_TAR" cb
 
 
 # 11 min
 function cb {
-    mkdir -p $OUT_DIR/all-alignments-tab{,-new} 2> /dev/null && true
-    ls $IN_DIR1 | 
+    mkdir -p $DATA_OUT/all-alignments-tab{,-new} 2> /dev/null && true
+    ls $DATA_IN1 | 
       while read i; do
-        cat $IN_DIR1/$i | $CONVERT_FASTA_TO_TAB > \
-          $OUT_DIR/all-alignments-tab-new/$i.tab
+        cat $DATA_IN1/$i | $CONVERT_FASTA_TO_TAB > \
+          $DATA_OUT/all-alignments-tab-new/$i.tab
       done
-    rm -rf $OUT_DIR/all-alignments-tab
-    mv $OUT_DIR/all-alignments-tab{-new,}
+    rm -rf $DATA_OUT/all-alignments-tab
+    mv $DATA_OUT/all-alignments-tab{-new,}
 }
 parrent_done_time_prefix=$done_time_prefix
-done_time_prefix=$OUT_DIR/all-alignments-tab
+done_time_prefix=$DATA_OUT/all-alignments-tab
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Converting FASTA to TAB: $IN_DIR1 to $OUT_DIR/all-alignments-tab" cb
+  "Converting FASTA to TAB: $DATA_IN1 to $DATA_OUT/all-alignments-tab" cb
 
 
 # 12 min
 function cb {
     echo "Listing alignments"
-    ls -1 $OUT_DIR/all-alignments-tab/ > $OUT_DIR/msa-list-new
-    mv $OUT_DIR/msa-list-new $OUT_DIR/msa-list
+    ls -1 $DATA_OUT/all-alignments-tab/ > $DATA_OUT/msa-list-new
+    mv $DATA_OUT/msa-list-new $DATA_OUT/msa-list
 
     echo "Counting sequences"
-    cat $OUT_DIR/msa-list | 
+    cat $DATA_OUT/msa-list | 
       while read i; do
-        cat $OUT_DIR/all-alignments-tab/$i | wc -l | tr "\n" "\t"
+        cat $DATA_OUT/all-alignments-tab/$i | wc -l | tr "\n" "\t"
         echo $i
-      done > $OUT_DIR/msa-sizes-numseq-new
-    mv $OUT_DIR/msa-sizes-numseq-new $OUT_DIR/msa-sizes-numseq
+      done > $DATA_OUT/msa-sizes-numseq-new
+    mv $DATA_OUT/msa-sizes-numseq-new $DATA_OUT/msa-sizes-numseq
 
     echo "Counting msa lengths"
-    cat $OUT_DIR/msa-list | 
+    cat $DATA_OUT/msa-list | 
       while read i; do 
-        head -1 $OUT_DIR/all-alignments-tab/$i |
+        head -1 $DATA_OUT/all-alignments-tab/$i |
           awk '{print $2}' | tr -d "\n" | wc -c | tr "\n" "\t"
         echo $i
-      done > $OUT_DIR/msa-sizes-length-new
-    mv $OUT_DIR/msa-sizes-length-new $OUT_DIR/msa-sizes-length
+      done > $DATA_OUT/msa-sizes-length-new
+    mv $DATA_OUT/msa-sizes-length-new $DATA_OUT/msa-sizes-length
 }
 parrent_done_time_prefix=$done_time_prefix
-done_time_prefix=$OUT_DIR
+done_time_prefix=$DATA_OUT
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Indexing $OUT_DIR/all-alignments-tab" cb  
+  "Indexing $DATA_OUT/all-alignments-tab" cb  

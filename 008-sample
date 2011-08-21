@@ -10,28 +10,28 @@ set +u
 [ ! -n "$1" ] && SEED=1 || SEED="$1"
 set -u
 
-IN_DIR="$0-data-in"
-OUT_DIR="$0-data-out"
+DATA_IN="$0-data-in"
+DATA_OUT="$0-data-out"
 
-mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
+mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
 
 
 function cb {
     echo "Importing (few files) 005-reshape-data-out/msa-*"
-    cp ./005-reshape-data-out/msa-* $IN_DIR/
+    cp ./005-reshape-data-out/msa-* $DATA_IN/
 }
 parrent_done_time_prefix="./005-reshape-data-out"
-done_time_prefix=$IN_DIR
+done_time_prefix=$DATA_IN
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Importing data into $IN_DIR" cb
+  "Importing data into $DATA_IN" cb
 
 
 
 function cb {
-  $0-scripts/sample.R $SEED 100 $IN_DIR/msa-list > "$OUT_DIR/sample$SEED-list"
+  $0-scripts/sample.R $SEED 100 $DATA_IN/msa-list > "$DATA_OUT/sample$SEED-list"
 }
 parrent_done_time_prefix=$done_time_prefix
-done_time_prefix="$OUT_DIR/sample$SEED-list"
+done_time_prefix="$DATA_OUT/sample$SEED-list"
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Sample $SEED. Identifying 100 items from $IN_DIR/msa-list" cb
+  "Sample $SEED. Identifying 100 items from $DATA_IN/msa-list" cb

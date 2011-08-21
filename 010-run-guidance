@@ -6,25 +6,25 @@ set -u
 
 # Tags: slow-import
 
-IN_DIR="$0-data-in"
-OUT_DIR="$0-data-out"
+DATA_IN="$0-data-in"
+DATA_OUT="$0-data-out"
 
-mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
+mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
 (cd 008-sample-data-out/; ls -1 --indicator-style=none sample*-list) |
 while read sample
 do
   function cb {
-      mkdir -p "$IN_DIR/$sample"{,-new} 2> /dev/null && true
+      mkdir -p "$DATA_IN/$sample"{,-new} 2> /dev/null && true
       cat "008-sample-data-out/$sample" | sed 's/.tab$//' | while read file_name; do
         cp "005-reshape-data-in/fasta.tar.gz-extracted/$file_name" \
-          "$IN_DIR/$sample-new/"
+          "$DATA_IN/$sample-new/"
       done
-      rm -rf "$IN_DIR/$sample"
-      mv "$IN_DIR/$sample"{-new,}
+      rm -rf "$DATA_IN/$sample"
+      mv "$DATA_IN/$sample"{-new,}
   }
   parrent_done_time_prefix="008-sample-data-out/$sample"
-  done_time_prefix="$IN_DIR/$sample"
+  done_time_prefix="$DATA_IN/$sample"
   pipeline   $parrent_done_time_prefix   $done_time_prefix \
     "Importing 008-sample-data-out/$sample-list items \
      from 005-reshape-data-in/fasta.tar.gz-extracted" cb
