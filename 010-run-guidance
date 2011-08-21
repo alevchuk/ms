@@ -1,47 +1,32 @@
-#!/usr/bin/env ruby
+#!/bin/bash
 
-# Limit to avoid waiting forever
-MAX_FASTA_SIZE = 200_000 # number of non-header characters
+source ./api/pipeline.sh
+set -e
+set -u
 
-RUNDIR = "011-run1-4-mafft-v6.712"
+# Tags: slow-import
 
-Dir.mkdir(RUNDIR) unless File.directory?(RUNDIR)
+IN_DIR="$0-data-in"
+OUT_DIR="$0-data-out"
 
-fasta_files = []
-Dir.glob("cw/20*/*.fasta") do |fname|
+mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
 
-  s = `cat #{fname} | grep -v "^>" | wc -c`.to_i
+(cd 008-sample-data-out/; ls -1 --indicator-style=none sample*-list) |
+while read sample
+do
+  function cb {
+      mkdir -p "$IN_DIR/$sample"{,-new} 2> /dev/null && true
+      cat "008-sample-data-out/$sample" | sed 's/.tab$//' | while read file_name; do
+        cp "005-reshape-data-in/fasta.tar.gz-extracted/$file_name" \
+          "$IN_DIR/$sample-new/"
+      done
+      rm -rf "$IN_DIR/$sample"
+      mv "$IN_DIR/$sample"{-new,}
+  }
+  parrent_done_time_prefix="008-sample-data-out/$sample"
+  done_time_prefix="$IN_DIR/$sample"
+  pipeline   $parrent_done_time_prefix   $done_time_prefix \
+    "Importing 008-sample-data-out/$sample-list items \
+     from 005-reshape-data-in/fasta.tar.gz-extracted" cb
 
-  if s > MAX_FASTA_SIZE
-    STDERR.puts "Skipping because fasta size > #{MAX_FASTA_SIZE}:" +
-      " #{fname} (#{s} characters)"
-    next
-  end
-
-  fasta_files.push fname
-end
-
-
-fasta_files.each do |fpath|
-  if fpath =~ /\/([^\/]*)\/([^\/]*)\.fasta/
-    simple_name = "#{$1}.#{$2}"
-  
-    # --msaParam --thread 8 
-    opts = "--msaProgram MAFFT --seqType aa"
-    cmd = "guidance.pl #{opts} " + 
-      "--seqFile ../#{fpath}  --outDir #{simple_name}.guidance"
-
-    File.open("./#{RUNDIR}/#{simple_name}.sh", 'w') do |f|
-      f.puts "export PATH=~/opt/mafft-6.712-with-extensions/bin:$PATH"
-      f.puts "(which mafft guidance.pl; time #{cmd}) &> " +
-        "./#{simple_name}.sh.out"
-    end
-
-    qsub_cmd = "qsub -d #{Dir.pwd}/#{RUNDIR} ./#{simple_name}.sh"
-
-    puts qsub_cmd
-  else
-    raise
-  end
-
-end
+done
