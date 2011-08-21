@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
+# Limit to avoid waiting forever
 MAX_FASTA_SIZE = 200_000 # number of non-header characters
+
 RUNDIR = "011-run1-4-mafft-v6.712"
 
 Dir.mkdir(RUNDIR) unless File.directory?(RUNDIR)
