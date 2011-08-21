@@ -11,7 +11,7 @@ set +u
 set -u
 
 IN_DIR="$0-data-in"
-OUT_DIR="$0-data-out-s$SEED"
+OUT_DIR="$0-data-out"
 
 mkdir -p $IN_DIR $OUT_DIR 2> /dev/null && true
 
@@ -29,10 +29,9 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
 
 
 function cb {
-  $0-scripts/sample.R $SEED 100 $IN_DIR/msa-list > \
-    "$OUT_DIR/sample-100-alignments-list"
+  $0-scripts/sample.R $SEED 100 $IN_DIR/msa-list > "$OUT_DIR/sample$SEED-list"
 }
 parrent_done_time_prefix=$done_time_prefix
-done_time_prefix=$OUT_DIR
+done_time_prefix="$OUT_DIR/sample$SEED-list"
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Sample $SEED. Identifying 100 items from $IN_DIR/all-alignments-tab" cb
+  "Sample $SEED. Identifying 100 items from $IN_DIR/msa-list" cb
