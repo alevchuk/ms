@@ -1,4 +1,28 @@
 #!/bin/bash
 
+set -u
+set -e
+
 tar zxvf misc-bioinfo-scripts.tar.gz 
-mv opt/misc-bioinfo-scripts ../opt
+mv misc-bioinfo-scripts ../opt/
+
+
+
+tar xf guidance.v1.1.tgz
+cd guidance.v1.1
+make
+cd ..
+mv guidance.v1.1 ../opt/
+
+
+
+tar xf mafft-6.857-with-extensions-src.tgz
+cd mafft-6.857-with-extensions/core
+make clean
+cat Makefile | sed 's/#ENABLE_MULTITHREAD/ENABLE_MULTITHREAD/' > Makefile-new
+mv Makefile{-new,}
+cat Makefile | sed "s|PREFIX = .*|PREFIX = `pwd`/../../../opt/mafft-6.857-with-extensions|" > Makefile-new
+mv Makefile{-new,}
+make
+make install
+cd ../..

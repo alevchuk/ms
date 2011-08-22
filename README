@@ -4,7 +4,8 @@ Dependencies that are NOT included
 R
 Ruby
 GNU Linux environment
-
+Bioperl (needed by GUIDANCE)
+dos2unix (needed by GUIDANCE)
 
 
 Dependencies that are included (see src/)
