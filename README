@@ -1,4 +1,4 @@
-DEPENDENCIES THAT ARE NOT INCLUDED
+Dependencies that are NOT included
 ##################################
 
 R
@@ -7,8 +7,15 @@ GNU Linux environment
 
 
 
-DEPENDENCIES THAT ARE INCLUDED (see src/)
+Dependencies that are included (see src/)
 #########################################
 
 mafft-6.857-with-extensions
 guidance.v1.1
+
+
+
+Tested on
+#########
+
+Debian 6.0
