@@ -12,14 +12,14 @@ function pipeline {
   caption=$3
   payload=$4        # What needs to be done? (a callback function)
 
-  echo $caption 2> /dev/stderr
+  echo $caption >&2
 
   in_progress=$prefix-inprogress-or-failed
   done_time=$prefix-done
   parent_time=$parent_prefix-done
 
   if ! $ALWAYS_RUN && [ ! -f $parent_time ]; then
-    echo "ERROR: Parent done file does not exist: $parent_time" > /dev/stderr
+    echo "ERROR: Parent done file does not exist: $parent_time" >&2
     exit 1
   fi
 
@@ -35,7 +35,7 @@ function pipeline {
       touch $done_time
     )
   else
-    printf "Already done.\n\n" 2> /dev/stderr
+    printf "Already done.\n\n" >&2
   fi
 
 }

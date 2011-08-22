@@ -12,7 +12,7 @@ if [ -d $rundir ]; then
     awk '/MEAN_RES_PAIR_SCORE/ {print $2}' ${rundir}-scores/${famname}-msa-scr
   done > ${rundir}-scores-extracted
 else
-  echo "NOTE: ${rundir} does not exists, skipping extracton step" > /dev/stderr
+  echo "NOTE: ${rundir} does not exists, skipping extracton step" >&2
 fi
 
 cat ${rundir}-scores-extracted | awk '{print $2, $1}' | sort -n
