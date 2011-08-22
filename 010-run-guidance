@@ -4,29 +4,50 @@ source ./api/pipeline.sh
 set -e
 set -u
 
-# Tags: slow-import
+# Tags: slow-import depends-on-opt
+
+GUIDANCE_EXEC="./opt/guidance.v1.1/www/Guidance/guidance.pl"
+MAFFT_PATH="./opt/mafft-6.857-with-extensions/bin"
 
 DATA_IN="$0-data-in"
 DATA_OUT="$0-data-out"
-
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
-(cd 008-sample-data-out/; ls -1 --indicator-style=none sample*-list) |
+(cd 008-sample-data-out/; ls -1 --indicator-style=none   sample*-list) |
 while read sample
 do
-  function cb {
-      mkdir -p "$DATA_IN/$sample"{,-new} 2> /dev/null && true
-      cat "008-sample-data-out/$sample" | sed 's/.tab$//' | while read file_name; do
-        cp "005-reshape-data-in/fasta.tar.gz-extracted/$file_name" \
-          "$DATA_IN/$sample-new/"
-      done
-      rm -rf "$DATA_IN/$sample"
-      mv "$DATA_IN/$sample"{-new,}
+  data_in_final="$DATA_IN/$sample-nogaps"
+  function callback {
+      mkdir -p $data_in_final{,-new} 2> /dev/null && true
+      cat "008-sample-data-out/$sample" | sed 's/.tab$//' |
+        while read file_name; do
+          cat "005-reshape-data-in/fasta.tar.gz-extracted/$file_name" |
+            tr -d "-" > "$data_in_final-new/$file_name"
+        done
+      rm -rf $data_in_final
+      mv $data_in_final{-new,}
   }
   parrent_done_time_prefix="008-sample-data-out/$sample"
-  done_time_prefix="$DATA_IN/$sample"
+  done_time_prefix=$data_in_final
   pipeline   $parrent_done_time_prefix   $done_time_prefix \
     "Importing 008-sample-data-out/$sample-list items \
-     from 005-reshape-data-in/fasta.tar.gz-extracted" cb
+     from 005-reshape-data-in/fasta.tar.gz-extracted \
+     removing all gaps (MSA alignment information) as we import" callback
+done
+
+
+jobs_dir="$0-jobs"
+mkdir $jobs_dir 2> /dev/null && true
+(cd $DATA_IN; echo sample*-list-nogaps | tr " " "\n") |
+while read sample; do
+
+  cat 010-run-guidance-scripts/guidance-run.sh.template |
+    sed "s|%%WD%%|`pwd`|g" |
+    sed "s|%%MAFFT_PATH%%|$MAFFT_PATH|g" |
+    sed "s|%%GUIDANCE_EXEC%%|$GUIDANCE_EXEC|g" |
+    sed "s|%%DATA_IN%%|$DATA_IN/$sample|g" |
+    sed "s|%%DATA_OUT%%|$DATA_OUT/$sample|g" |
+      cat > $jobs_dir/$sample
 
 done
+

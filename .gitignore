@@ -4,8 +4,9 @@ opt/*
 
 data/cw
 data/cdd-*
-*-data-in
-*-data-out
-*-data-out-s*
+[0-9]*-data-in
+[0-9]*-data-out
+[0-9]*-data-out-s*
+[0-9]*-jobs
 
 [0-9]*-done
