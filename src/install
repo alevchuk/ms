@@ -1,0 +1,4 @@
+#!/bin/bash
+
+tar zxvf misc-bioinfo-scripts.tar.gz 
+mv opt/misc-bioinfo-scripts ../opt
