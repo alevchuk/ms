@@ -11,7 +11,10 @@ grep "MEAN_RES_PAIR_SCORE" \
   010-run-guidance-data-out/sample*-list-nogaps/*/MSA.MAFFT.Guidance_msa.scr |
   while read line; do
 
-    sample=`echo $line | awk -F/ '{print $2}' | awk -F- '{print $1}'`
+    sample=`echo $line |
+     awk -F"/" '{print $2}' | # Parse directory structure
+     awk -F- '{print $1 "-" $2 "-" $3}' # Parse file name structure
+    `
 
     echo $line |
       awk '{print $1, $4}' | # $2 is MEAN_RES_PAIR_SCORE, $4 is MEAN_COL_SCORE
@@ -20,6 +23,12 @@ grep "MEAN_RES_PAIR_SCORE" \
       cat >> $DATA_OUT-new/$sample-mafft-guidance-msa-scr
 
    done
+
+for i in $DATA_OUT-new/*-mafft-guidance-msa-scr; do
+  sort -nk 2 $i > $i-new
+  mv $i{-new,}
+done
+
 
 # Danger Zone
 rm -rf $DATA_OUT

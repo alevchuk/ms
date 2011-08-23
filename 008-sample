@@ -6,7 +6,7 @@ set -u
 
 # Tags: takes-optional-arguments
 
-SAMPLE_SIZE=3
+SAMPLE_SIZE=20
 set +u
 [ ! -n "$1" ] && SEED=1 || SEED="$1"
 set -u
@@ -18,22 +18,26 @@ mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
 
 
-function cb {
+function callback {
     echo "Importing (few files) 005-reshape-data-out/msa-*"
     cp ./005-reshape-data-out/msa-* $DATA_IN/
 }
 parrent_done_time_prefix="./005-reshape-data-out"
 done_time_prefix=$DATA_IN
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Importing data into $DATA_IN" cb
+  "Importing data into $DATA_IN" callback
 
 
-
-function cb {
+sample_name="sample-size$SAMPLE_SIZE-id$SEED-list"
+function callback {
   $0-scripts/sample.R $SEED $SAMPLE_SIZE $DATA_IN/msa-list > \
-    "$DATA_OUT/sample$SEED-list"
+    "$DATA_OUT/$sample_name"
 }
+
 parrent_done_time_prefix=$done_time_prefix
-done_time_prefix="$DATA_OUT/sample$SEED-list"
+done_time_prefix="$DATA_OUT/$sample_name"
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Sample $SEED. Identifying $SAMPLE_SIZE items from $DATA_IN/msa-list" cb
+  "Sample $sample_name. Sampling $SAMPLE_SIZE items from $DATA_IN/msa-list" \
+  callback
+
+
