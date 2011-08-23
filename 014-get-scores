@@ -1,18 +1,28 @@
 #!/bin/bash
 
-rundir="011-run1-3-mafft-v6.850b"
+set -e
+set -u
 
-mkdir ${rundir}-scores 2> /dev/null
+DATA_OUT="$0-data-out"
+mkdir -p $DATA_OUT-new 2> /dev/null && true
 
-if [ -d $rundir ]; then
-  for i in ${rundir}/*.guidance/MSA.MAFFT.Guidance_msa.scr; do
-    famname=`echo $i | sed 's/\.guidance/\//g' | awk -F \/ '{print $2}'`
-    cp -f $i ${rundir}-scores/${famname}-msa-scr
-    echo -n "cwn.${famname} "
-    awk '/MEAN_RES_PAIR_SCORE/ {print $2}' ${rundir}-scores/${famname}-msa-scr
-  done > ${rundir}-scores-extracted
-else
-  echo "NOTE: ${rundir} does not exists, skipping extracton step" >&2
-fi
 
-cat ${rundir}-scores-extracted | awk '{print $2, $1}' | sort -n
+grep "MEAN_RES_PAIR_SCORE" \
+  010-run-guidance-data-out/sample*-list-nogaps/*/MSA.MAFFT.Guidance_msa.scr |
+  while read line; do
+
+    sample=`echo $line | awk -F/ '{print $2}' | awk -F- '{print $1}'`
+
+    echo $line |
+      awk '{print $1, $4}' | # $2 is MEAN_RES_PAIR_SCORE, $4 is MEAN_COL_SCORE
+      awk -F/ '{print $3, $4}' |
+      awk '{print $1 "\t" $3}' |
+      cat >> $DATA_OUT-new/$sample-mafft-guidance-msa-scr
+
+   done
+
+# Danger Zone
+rm -rf $DATA_OUT
+
+# Done
+mv $DATA_OUT{-new,}

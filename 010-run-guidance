@@ -51,3 +51,5 @@ while read sample; do
 
 done
 
+echo 010-run-guidance-jobs/* | tr " " "\n" |
+  while read i; do echo qsub $i; done
