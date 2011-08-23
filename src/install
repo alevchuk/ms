@@ -4,7 +4,7 @@ set -u
 set -e
 
 tar zxvf misc-bioinfo-scripts.tar.gz 
-mv misc-bioinfo-scripts ../opt/
+mv misc-bioinfo-scripts ../opt/ && true
 
 
 
@@ -12,7 +12,8 @@ tar xf guidance.v1.1.tgz
 cd guidance.v1.1
 make
 cd ..
-mv guidance.v1.1 ../opt/
+mv guidance.v1.1 ../opt/ && true
+chmod +x ../opt/guidance.v1.1/www/Guidance/guidance.pl
 
 
 
