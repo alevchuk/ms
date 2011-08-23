@@ -1,24 +1,34 @@
-#!/usr/bin/env Rscript
+#!/usr/bin/env ruby
 
-ORIGIN <- "cw"
+MIN_MAX_LENGTH = (ARGV[0].to_i)..(ARGV[1].to_i)
+SAMPLE_SIZE = ARGV[2].to_i
+SEED = ARGV[3].to_i
 
-#fasta_files = []
-#Dir.glob("#{ORIGIN}/20*/*.fasta") {|fname| fasta_files.push fname }
-#
-## Get Avg. Sequence Length
-#avg_seq_length = []
-#fasta_files.each do |fpath|
-#  number_of_sequences = `wc -l #{fpath}.tab`.to_i
-#  number_of_peptides = `awk '{print $2}' #{fpath}.tab | wc -c`.to_i
-#  avg_seq_length.push number_of_peptides.to_f / number_of_sequences.to_f
-#end
-#
-## Generate a Random sequence
-#avg_seq_length.each_with_index do |avg_len, fam_id|
-#  indecies = ((0...(avg_len.to_i)).to_a).collect {|i| rand(20).to_i }
-#  puts fasta_files[fam_id]
-#  p indecies
-#  puts
-#end
-#
-## Write out new FASTAs
+srand(SEED)
+
+# Pass 1: Count how many sequences meet length criterion
+population_size = 
+  File.open("./data/uniprot_2011_02.tab").reduce(0) do |subtotal, line|
+    seq = line.chomp.split("\t")[1]
+    subtotal + (MIN_MAX_LENGTH.include?(seq.size) ? 1 : 0)
+  end
+
+STDERR.puts "Number of sequeces fit to length criterion: #{population_size}"
+
+linenumbers = (1..SAMPLE_SIZE).collect{1 + (rand * population_size).to_i}
+STDERR.puts ["Sample (out of #{population_size}):"] + linenumbers
+
+# Pass 2: Extract sample
+fit_seq_lineno = 0
+File.open("./data/uniprot_2011_02.tab") do |f|
+  while line = f.gets
+    seq = line.chomp.split("\t")[1]
+    if MIN_MAX_LENGTH.include? seq.size
+      fit_seq_lineno += 1
+      puts seq if linenumbers.include? fit_seq_lineno
+    end
+  end
+
+  raise "ERROR: Number of lines matching length criteria does not add up" if
+    fit_seq_lineno != population_size
+end

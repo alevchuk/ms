@@ -6,6 +6,7 @@ set -u
 
 # Tags: takes-optional-arguments
 
+SAMPLE_SIZE=3
 set +u
 [ ! -n "$1" ] && SEED=1 || SEED="$1"
 set -u
@@ -29,9 +30,10 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
 
 
 function cb {
-  $0-scripts/sample.R $SEED 100 $DATA_IN/msa-list > "$DATA_OUT/sample$SEED-list"
+  $0-scripts/sample.R $SEED $SAMPLE_SIZE $DATA_IN/msa-list > \
+    "$DATA_OUT/sample$SEED-list"
 }
 parrent_done_time_prefix=$done_time_prefix
 done_time_prefix="$DATA_OUT/sample$SEED-list"
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Sample $SEED. Identifying 100 items from $DATA_IN/msa-list" cb
+  "Sample $SEED. Identifying $SAMPLE_SIZE items from $DATA_IN/msa-list" cb
