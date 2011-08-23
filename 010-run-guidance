@@ -22,7 +22,9 @@ do
       cat "008-sample-data-out/$sample" | sed 's/.tab$//' |
         while read file_name; do
           cat "005-reshape-data-in/fasta.tar.gz-extracted/$file_name" |
-            tr -d "-" > "$data_in_final-new/$file_name"
+            tr -d "-" > "$data_in_final-new/$file_name" | # remove gaps
+            sed '/^$/d' # remove double newlines
+
         done
       rm -rf $data_in_final
       mv $data_in_final{-new,}
