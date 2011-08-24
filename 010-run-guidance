@@ -35,21 +35,17 @@ do
      removing all gaps (MSA alignment information) as we import" callback
 done
 
-
-jobs_dir="$0-jobs"
-mkdir $jobs_dir 2> /dev/null && true
 (cd $DATA_IN; echo sample*-list-nogaps | tr " " "\n") |
 while read sample; do
-
   cat 010-run-guidance-scripts/guidance-run.sh.template |
     sed "s|%%WD%%|`pwd`|g" |
     sed "s|%%MAFFT_PATH%%|$MAFFT_PATH|g" |
     sed "s|%%GUIDANCE_EXEC%%|$GUIDANCE_EXEC|g" |
     sed "s|%%DATA_IN%%|$DATA_IN/$sample|g" |
     sed "s|%%DATA_OUT%%|$DATA_OUT/$sample|g" |
-      cat > $jobs_dir/$sample
-
+      cat > $DATA_IN/$sample-qsub-sh
 done
 
-echo 010-run-guidance-jobs/* | tr " " "\n" |
+echo $DATA_IN/*-qsub-sh | tr " " "\n" |
   while read i; do echo qsub $i; done
+
