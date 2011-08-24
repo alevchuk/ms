@@ -5,10 +5,21 @@ set -e
 set -u
 
 # Tags: takes-optional-arguments
+ 
+if [ $# != 2 ] && [ $# != 3 ]; then
+  echo "Usage: $0 <sample-size> <number-of-samples>   [-s]" >&2
+  echo "" >&2
+  echo "  <sample-size>        how many alignments should be in 1 sample" >&2
+  echo "  <number-of-samples>  how many samples should be taken" >&2
+  exit 1
+fi
 
-SAMPLE_SIZE=100
+# Arguments
+SAMPLE_SIZE=$1                              # sample size is (mandatory)
+N=$2                                        # number of samples (mandatory)
 set +u
-[ ! -n "$1" ] && SEED=1 || SEED="$1"
+[ $3 == '-s' ] && export ALWAYS_RUN=false   # skip steps (optional)
+[ -n $3 ] && [ $3 != '-s' ] && (echo "Invalid option $3"; exit 1)
 set -u
 
 DATA_IN="$0-data-in"
@@ -28,16 +39,17 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
   "Importing data into $DATA_IN" callback
 
 
-sample_name="sample-size$SAMPLE_SIZE-id$SEED-list"
-function callback {
-  $0-scripts/sample.R $SEED $SAMPLE_SIZE $DATA_IN/msa-list > \
-    "$DATA_OUT/$sample_name"
-}
 
-parrent_done_time_prefix=$done_time_prefix
-done_time_prefix="$DATA_OUT/$sample_name"
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Sample $sample_name. Sampling $SAMPLE_SIZE items from $DATA_IN/msa-list" \
-  callback
-
-
+for seed in `seq $N`; do
+  sample_name="sample-size$SAMPLE_SIZE-id$seed-list"
+  function callback {
+    $0-scripts/sample.R $seed $SAMPLE_SIZE $DATA_IN/msa-list > \
+      "$DATA_OUT/$sample_name"
+  }
+  
+  parrent_done_time_prefix=$done_time_prefix
+  done_time_prefix="$DATA_OUT/$sample_name"
+  pipeline   $parrent_done_time_prefix   $done_time_prefix \
+    "Sample $sample_name from $DATA_IN/msa-list" \
+    callback
+done
