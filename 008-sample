@@ -6,7 +6,7 @@ set -u
 
 # Tags: takes-optional-arguments
 
-SAMPLE_SIZE=20
+SAMPLE_SIZE=100
 set +u
 [ ! -n "$1" ] && SEED=1 || SEED="$1"
 set -u

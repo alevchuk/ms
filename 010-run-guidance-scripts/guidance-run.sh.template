@@ -12,24 +12,24 @@ GUIDANCE_EXEC=%%GUIDANCE_EXEC%%
 
 DATA_OUT=%%DATA_OUT%%
 DATA_IN=%%DATA_IN%%
-mkdir -p "$DATA_OUT"{,-new} 2> /dev/null && true
-
 
 function callback {
 
-  (cd $DATA_IN; echo *.FASTA | tr " " "\n") | while read fasta_file; do
+  fasta_file=%%FASTA_FILE%%
 
-    # fasta file must not have gaps
-    $GUIDANCE_EXEC --msaProgram MAFFT --seqType aa \
-      --seqFile $DATA_IN/$fasta_file --outDir $DATA_OUT-new/$fasta_file
-  done
+  if [ -n $DATA_OUT ]; then # variable must be non empty
+    rm -rf "$DATA_OUT-new"
+  fi
+  mkdir -p "$DATA_OUT-new"
+
+  $GUIDANCE_EXEC --msaProgram MAFFT --seqType aa \
+    --seqFile $DATA_IN/$fasta_file --outDir $DATA_OUT-new &> \
+    $DATA_OUT-new/stdouterr.log
 
   # Danger Zone
-  if [ -n $DATA_OUT ]; then # variable must be non empty
-    rm -rf "$DATA_OUT"
-  fi
+  rm -rf "$DATA_OUT"
 
-  mv "$DATA_OUT"{-new,}
+  mv $DATA_OUT{-new,}
 
 }
 parrent_done_time_prefix="$DATA_IN"

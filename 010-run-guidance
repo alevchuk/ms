@@ -13,7 +13,7 @@ DATA_IN="$0-data-in"
 DATA_OUT="$0-data-out"
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
-(cd 008-sample-data-out/; ls -1 --indicator-style=none   sample*-list) |
+(cd 008-sample-data-out/; ls -1 --indicator-style=none   sample-*-list) |
 while read sample
 do
   data_in_final="$DATA_IN/$sample-nogaps"
@@ -37,17 +37,22 @@ do
      removing all gaps (MSA alignment information) as we import" callback
 done
 
-(cd $DATA_IN; echo sample*-list-nogaps | tr " " "\n") |
+
+
+mkdir -p $DATA_IN/tasks 2> /dev/null && true
+(cd $DATA_IN; echo sample-*-list-nogaps | tr " " "\n") |
 while read sample; do
-  cat 010-run-guidance-scripts/guidance-run.sh.template |
-    sed "s|%%WD%%|`pwd`|g" |
-    sed "s|%%MAFFT_PATH%%|$MAFFT_PATH|g" |
-    sed "s|%%GUIDANCE_EXEC%%|$GUIDANCE_EXEC|g" |
-    sed "s|%%DATA_IN%%|$DATA_IN/$sample|g" |
-    sed "s|%%DATA_OUT%%|$DATA_OUT/$sample|g" |
-      cat > $DATA_IN/$sample-qsub-sh
+  (cd $DATA_IN/$sample; echo *.FASTA | tr " " "\n") |
+  while read fasta_file; do
+    cat 010-run-guidance-scripts/guidance-run.sh.template |
+      sed "s|%%WD%%|`pwd`|g" |
+      sed "s|%%FASTA_FILE%%|$fasta_file|g" |
+      sed "s|%%MAFFT_PATH%%|$MAFFT_PATH|g" |
+      sed "s|%%GUIDANCE_EXEC%%|$GUIDANCE_EXEC|g" |
+      sed "s|%%DATA_IN%%|$DATA_IN/$sample|g" |
+      sed "s|%%DATA_OUT%%|$DATA_OUT/$sample/$fasta_file|g" |
+        cat > $DATA_IN/tasks/$sample-$fasta_file-qsub-sh
+  done
 done
 
-echo $DATA_IN/*-qsub-sh | tr " " "\n" |
-  while read i; do echo qsub $i; done
-
+#echo $DATA_IN/tasks/*-qsub-sh | tr " " "\n"

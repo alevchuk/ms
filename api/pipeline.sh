@@ -2,6 +2,7 @@ set -e
 set -u
 
 ALWAYS_RUN=false # Default should be true for portability
+ALWAYS_RUN=true
 TIMEFORMAT="%0lR
 " # When timing, print no-fraction, long-format, elapsed time, and a linebreak
 
