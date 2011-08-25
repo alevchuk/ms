@@ -1,34 +1,40 @@
-#!/usr/bin/env ruby
+#!/bin/bash
 
-MIN_MAX_LENGTH = (ARGV[0].to_i)..(ARGV[1].to_i)
-SAMPLE_SIZE = ARGV[2].to_i
-SEED = ARGV[3].to_i
+source ./api/pipeline.sh
+set -e
+set -u
 
-srand(SEED)
+# Tags: depends-on-ruby-scripts
 
-# Pass 1: Count how many sequences meet length criterion
-population_size = 
-  File.open("./data/uniprot_2011_02.tab").reduce(0) do |subtotal, line|
-    seq = line.chomp.split("\t")[1]
-    subtotal + (MIN_MAX_LENGTH.include?(seq.size) ? 1 : 0)
-  end
+SAMPLE_UNIPROT="$0-scripts/sample-uniprot"
+UNIPROT_TAB="./data/uniprot_2011_02.tab"
 
-STDERR.puts "Number of sequeces fit to length criterion: #{population_size}"
+# Get average sequence length of samples
+# ?
+min_size=1
+max_size=1000
 
-linenumbers = (1..SAMPLE_SIZE).collect{1 + (rand * population_size).to_i}
-STDERR.puts ["Sample (out of #{population_size}):"] + linenumbers
 
-# Pass 2: Extract sample
-fit_seq_lineno = 0
-File.open("./data/uniprot_2011_02.tab") do |f|
-  while line = f.gets
-    seq = line.chomp.split("\t")[1]
-    if MIN_MAX_LENGTH.include? seq.size
-      fit_seq_lineno += 1
-      puts seq if linenumbers.include? fit_seq_lineno
-    end
-  end
+# Pull out random sequences
+sample_size=4
+sample_id=1
+random_seqs=`$SAMPLE_UNIPROT \
+  $min_size $max_size \
+  $sample_size $sample_id \
+  $UNIPROT_TAB`
 
-  raise "ERROR: Number of lines matching length criteria does not add up" if
-    fit_seq_lineno != population_size
-end
+
+# Add sequences to alignment samples
+samples=`echo 010-run-guidance-data-in/sample-*-list-nogaps`
+# TODO: Write to your own output directory?
+for s in $samples; do
+  for family_fasta_file in `echo $s/*FASTA`; do
+    cp $family_fasta_file{,-with-random}
+    count=1
+    for rs in $random_seqs; do
+      echo ">RAND$count" >> $family_fasta_file-with-random
+      echo $rs >> $family_fasta_file-with-random
+      count=$((count+1)) 
+    done
+  done
+done
