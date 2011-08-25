@@ -13,6 +13,9 @@ GUIDANCE_EXEC=%%GUIDANCE_EXEC%%
 DATA_OUT=%%DATA_OUT%%
 DATA_IN=%%DATA_IN%%
 
+
+mkdir -p "$DATA_OUT"{,-new} 2> /dev/null && true
+
 function callback {
 
   fasta_file=%%FASTA_FILE%%

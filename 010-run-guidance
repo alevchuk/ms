@@ -58,7 +58,7 @@ do
 done
 
 
-
+echo "Creating tasks in $DATA_IN/tasks" >&2
 mkdir -p $DATA_IN/tasks 2> /dev/null && true
 (cd $DATA_IN; echo sample-*-list-nogaps | tr " " "\n") |
 while read sample; do
