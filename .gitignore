@@ -5,6 +5,8 @@ opt/*
 
 data/cw
 data/cdd-*
+data/notyet-cdd-*
+data/*.tab
 [0-9]*-data-in
 [0-9]*-data-out
 [0-9]*-data-out-s*
