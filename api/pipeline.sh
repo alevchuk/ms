@@ -1,13 +1,18 @@
 set -e
 set -u
 
-ALWAYS_RUN=false # Default should be true for portability
-ALWAYS_RUN=true
+set +u
+if [ "$ALWAYS_RUN" == "" ]; then
+  ALWAYS_RUN=false # Default is false, skip compleated steps whenever possible
+fi
+set -u
+
 TIMEFORMAT="%0lR
 " # When timing, print no-fraction, long-format, elapsed time, and a linebreak
 
 function pipeline {
 
+  current_prog=$0
   parent_prefix=$1  # Location(s) for the upstream time-stamp files
   prefix=$2         # Location for time-stamp files *-done and *-inprogress
   caption=$3
@@ -24,7 +29,13 @@ function pipeline {
     exit 1
   fi
 
-  if $ALWAYS_RUN || [ ! -f $done_time ] || [ $parent_time -nt $done_time ]
+  # Any one of these will trigger running the payload:
+  #  * ALWAYS_RUN flag
+  #  * Missig done file
+  #  * My code file (current_prog) is newer than my done file
+  #  * Parrent done file newer than my done file
+  if $ALWAYS_RUN || [ ! -f $done_time ] || [ $current_prog -nt $done_time ] ||
+    [ $parent_time -nt $done_time ]
   then
     time (
       mv $done_time $in_progress 2> /dev/null && true

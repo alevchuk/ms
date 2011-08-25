@@ -9,11 +9,31 @@ set -u
 GUIDANCE_EXEC="./opt/guidance.v1.1/www/Guidance/guidance.pl"
 MAFFT_PATH="./opt/mafft-6.857-with-extensions/bin"
 
+# Tags: takes-optional-arguments
+
+if [ $# != 1 ] && [ $# != 2 ]; then
+  echo "Usage: $0 <sample-size>  [-s]" >&2
+  echo "" >&2
+  echo "  <sample-size>        You may have several sizes of samples." >&2
+  echo "                       Which size group do you whan scored?" >&2
+  echo "" >&2
+  echo "  -f                   force always runing, never skip any steps" >&2
+  exit 1
+fi
+
+# Arguments
+SAMPLE_SIZE=$1                              # sample size (mandatory)
+set +u
+[ "$2" == '-f' ] && export ALWAYS_RUN=true
+[ -n "$2" ] && [ "$2" != '-f' ] && (echo "Invalid option $2"; exit 1)
+set -u
+
+
 DATA_IN="$0-data-in"
 DATA_OUT="$0-data-out"
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
-(cd 008-sample-data-out/; ls -1 --indicator-style=none   sample-*-list) |
+(cd 008-sample-data-out/; echo sample-size$SAMPLE_SIZE-*-list) | tr " " "\n" |
 while read sample
 do
   data_in_final="$DATA_IN/$sample-nogaps"
@@ -46,6 +66,7 @@ while read sample; do
   while read fasta_file; do
     cat 010-run-guidance-scripts/guidance-run.sh.template |
       sed "s|%%WD%%|`pwd`|g" |
+      sed "s|%%ALWAYS_RUN%%|$ALWAYS_RUN|g" |
       sed "s|%%FASTA_FILE%%|$fasta_file|g" |
       sed "s|%%MAFFT_PATH%%|$MAFFT_PATH|g" |
       sed "s|%%GUIDANCE_EXEC%%|$GUIDANCE_EXEC|g" |

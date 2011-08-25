@@ -11,15 +11,17 @@ if [ $# != 2 ] && [ $# != 3 ]; then
   echo "" >&2
   echo "  <sample-size>        how many alignments should be in 1 sample" >&2
   echo "  <number-of-samples>  how many samples should be taken" >&2
+  echo "" >&2
+  echo "  -f                   force always runing, never skip any steps" >&2
   exit 1
 fi
 
 # Arguments
-SAMPLE_SIZE=$1                              # sample size is (mandatory)
+SAMPLE_SIZE=$1                              # sample size (mandatory)
 N=$2                                        # number of samples (mandatory)
 set +u
-[ $3 == '-s' ] && export ALWAYS_RUN=false   # skip steps (optional)
-[ -n $3 ] && [ $3 != '-s' ] && (echo "Invalid option $3"; exit 1)
+[ "$3" == '-f' ] && export ALWAYS_RUN=true  # skip steps (optional)
+[ -n "$3" ] && [ "$3" != '-f' ] && (echo "Invalid option $3"; exit 1)
 set -u
 
 DATA_IN="$0-data-in"
