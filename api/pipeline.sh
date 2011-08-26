@@ -39,7 +39,11 @@ function pipeline {
   then
     time (
       mv $done_time $in_progress 2> /dev/null && true
-      touch $in_progress
+      set +e
+      touch $in_progress ||
+        (echo "ERROR: Parent directory  must exist to track progress.";
+        exit 1) || exit 1
+      set -e
   
       $payload
   

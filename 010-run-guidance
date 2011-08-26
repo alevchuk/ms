@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 source ./api/pipeline.sh
 set -e
 set -u
@@ -41,7 +58,7 @@ do
       mkdir -p $data_in_final{,-new} 2> /dev/null && true
       cat "008-sample-data-out/$sample" | sed 's/.tab$//' |
         while read file_name; do
-          cat "005-reshape-data-in/fasta.tar.gz-extracted/$file_name" |
+          cat "005-reshape-data-in/fasta.tar.gz-extracted-trimmed/$file_name" |
             tr -d "-" > "$data_in_final-new/$file_name" | # remove gaps
             sed '/^$/d' # remove double newlines
 
@@ -53,7 +70,7 @@ do
   done_time_prefix=$data_in_final
   pipeline   $parrent_done_time_prefix   $done_time_prefix \
     "Importing 008-sample-data-out/$sample-list items \
-     from 005-reshape-data-in/fasta.tar.gz-extracted \
+     from 005-reshape-data-in/fasta.tar.gz-extracted-trimmed \
      removing all gaps (MSA alignment information) as we import" callback
 done
 

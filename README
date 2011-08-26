@@ -1,22 +1,22 @@
-Dependencies that are NOT included
-##################################
+UNNAMED is a classifier of outlier sequences in multiple alignments
 
-R
-Ruby
-GNU Linux environment
-Bioperl (needed by GUIDANCE)
-dos2unix (needed by GUIDANCE)
+Website:
+  https://github.com/alevchuk/ms
 
+Requirements:
+  GNU Linux environment
+  R
+  Ruby
+  Bioperl (needed by GUIDANCE)
+  dos2unix (needed by GUIDANCE)
 
-Dependencies that are included (see src/)
-#########################################
+Included packages:
+  MAFFT v6.857
+  GUIDANCE v1.1
+  GNU Parallel v20110822
 
-mafft-6.857-with-extensions
-guidance.v1.1
+Tested on:
+  Debian GNU/Linux 6.0 (Lenny)
 
-
-
-Tested on
-#########
-
-Debian 6.0
+Contact:
+  Aleksandr Levchuk <alecvhuk@gmail.com>

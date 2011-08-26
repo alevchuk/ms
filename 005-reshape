@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 # Tags: very-slow
 
 set -e
@@ -11,31 +28,30 @@ source ./api/pipeline.sh
 CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab 
 
 LATEST_CDD_TAR=`ls -1d ./data/cdd-*/fasta.tar.gz | sort | tail -1`
-DATA_IN1="$0-data-in/fasta.tar.gz-extracted"
+DATA_IN_EXTRACTED="$0-data-in/fasta.tar.gz-extracted"
 DATA_OUT="$0-data-out"
 
-mkdir -p $DATA_IN1 $DATA_OUT 2> /dev/null && true
+mkdir -p $DATA_OUT $DATA_IN_EXTRACTED 2> /dev/null && true
 
 
-# 12 min
-function cb {
-    mkdir -p $DATA_IN1{,-new} 2> /dev/null && true
-    tar xf $LATEST_CDD_TAR -C $DATA_IN1-new
-    rm -rf $DATA_IN1
-    mv $DATA_IN1{-new,}
+function callback {
+    mkdir -p $DATA_IN_EXTRACTED{,-new} 2> /dev/null && true
+    tar xf $LATEST_CDD_TAR -C $DATA_IN_EXTRACTED-new
+    rm -rf $DATA_IN_EXTRACTED
+    mv $DATA_IN_EXTRACTED{-new,}
 }
 parrent_done_time_prefix=$LATEST_CDD_TAR
-done_time_prefix=$DATA_IN1
+done_time_prefix=$DATA_IN_EXTRACTED
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Extracting $LATEST_CDD_TAR" cb
+  "Extracting $LATEST_CDD_TAR" \
+   callback # 2 min
 
 
-# 11 min
-function cb {
+function callback {
     mkdir -p $DATA_OUT/all-alignments-tab{,-new} 2> /dev/null && true
-    ls $DATA_IN1 | 
+    ls $DATA_IN_EXTRACTED | 
       while read i; do
-        cat $DATA_IN1/$i | $CONVERT_FASTA_TO_TAB > \
+        cat $DATA_IN_EXTRACTED/$i | $CONVERT_FASTA_TO_TAB > \
           $DATA_OUT/all-alignments-tab-new/$i.tab
       done
     rm -rf $DATA_OUT/all-alignments-tab
@@ -44,33 +60,74 @@ function cb {
 parrent_done_time_prefix=$done_time_prefix
 done_time_prefix=$DATA_OUT/all-alignments-tab
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Converting FASTA to TAB: $DATA_IN1 to $DATA_OUT/all-alignments-tab" cb
+  "Converting to TAB: $DATA_IN_EXTRACTED to $DATA_OUT/all-alignments-tab" \
+  callback # 12 min
 
 
-# 12 min
-function cb {
-    echo "Listing alignments"
-    ls -1 $DATA_OUT/all-alignments-tab/ > $DATA_OUT/msa-list-new
-    mv $DATA_OUT/msa-list-new $DATA_OUT/msa-list
+function callback {
+  ls -1 $DATA_OUT/all-alignments-tab/ > $DATA_OUT/msa-list-new
+  mv $DATA_OUT/msa-list{-new,}
 
-    echo "Counting sequences"
-    cat $DATA_OUT/msa-list | 
-      while read i; do
-        cat $DATA_OUT/all-alignments-tab/$i | wc -l | tr "\n" "\t"
-        echo $i
-      done > $DATA_OUT/msa-sizes-numseq-new
-    mv $DATA_OUT/msa-sizes-numseq-new $DATA_OUT/msa-sizes-numseq
+  cat $DATA_OUT/msa-list |
+    while read i; do
+      cat $DATA_OUT/all-alignments-tab/$i | wc -l | tr "\n" "\t"
+      echo $i
+    done > $DATA_OUT/msa-sizes-numseq-new
+  mv $DATA_OUT/msa-sizes-numseq-new $DATA_OUT/msa-sizes-numseq
+}
+parrent_done_time_prefix=$done_time_prefix
+done_time_prefix=$DATA_OUT/msa-sizes-numseq
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Getting msa-{list,sizes-numseq} of $DATA_OUT/all-alignments-tab" \
+  callback # 5m
 
-    echo "Counting msa lengths"
-    cat $DATA_OUT/msa-list | 
-      while read i; do 
-        head -1 $DATA_OUT/all-alignments-tab/$i |
-          awk '{print $2}' | tr -d "\n" | wc -c | tr "\n" "\t"
-        echo $i
-      done > $DATA_OUT/msa-sizes-length-new
-    mv $DATA_OUT/msa-sizes-length-new $DATA_OUT/msa-sizes-length
+
+function callback {
+  rm -rf $DATA_IN_EXTRACTED-trimm{ing,ed}  # Danger Zone
+  rm -rf $DATA_OUT/all-alignments-tab-trimm{ing,ed} # Danger Zone
+
+  mv $DATA_IN_EXTRACTED{,-trimming} >&2 && true
+  mv $DATA_OUT/all-alignments-tab{,-trimming} >&2 && true
+
+  filter_regexp="^[1-3]`printf \"\t\"`"
+
+  echo -n "Number of TAB files removed in data-out: "
+  sort -n  $DATA_OUT/msa-sizes-numseq  | egrep "$filter_regexp" |
+  awk '{print $2}' | while read tab_file; do
+    fasta_file=${tab_file%.tab}
+    rm -v $DATA_IN_EXTRACTED-trimming/$fasta_file
+    rm -v $DATA_OUT/all-alignments-tab-trimming/$tab_file 2>&1 | wc -l
+  done | awk '{s+=$1} END {print s}'
+
+  mv $DATA_IN_EXTRACTED-trimm{ing,ed}
+  mv $DATA_OUT/all-alignments-tab-trimm{ing,ed}
+
+  echo "Extracting msa-sizes-numseq-trimmed from $DATA_OUT/msa-sizes-numseq"
+  sort -n  $DATA_OUT/msa-sizes-numseq  | egrep -v "$filter_regexp" >\
+    $DATA_OUT/msa-sizes-numseq-trimmed-new
+  mv $DATA_OUT/msa-sizes-numseq-trimmed{-new,}
+}
+parrent_done_time_prefix=$done_time_prefix
+done_time_prefix=$DATA_OUT/all-alignments-tab-trimmed
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Trimming all alignments with 3 or less sequences" \
+  callback # 18s
+
+
+function callback {
+  ls -1 $DATA_OUT/all-alignments-tab-trimmed/ > $DATA_OUT/msa-list-trimmed-new
+  mv $DATA_OUT/msa-list-trimmed{-new,}
+
+  cat $DATA_OUT/msa-list-trimmed |
+    while read i; do
+      head -1 $DATA_OUT/all-alignments-tab-trimmed/$i |
+        awk '{print $2}' | tr -d "\n" | wc -c | tr "\n" "\t"
+      echo $i
+    done > $DATA_OUT/msa-sizes-length-trimmed-new
+  mv $DATA_OUT/msa-sizes-length-trimmed{-new,}
 }
 parrent_done_time_prefix=$done_time_prefix
 done_time_prefix=$DATA_OUT
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Indexing $DATA_OUT/all-alignments-tab" cb  
+  "Getting msa-{list,sizes-lengths} of $DATA_OUT/all-alignments-tab-trimmed" \
+  callback # 6m20s
