@@ -24,7 +24,10 @@ DATA_OUT="$0-data-out"
 mkdir -p $DATA_OUT-new 2> /dev/null && true
 
 SCORE_FILES=`echo \
-  010-run-guidance-data-out/sample*-list-nogaps/*/MSA.MAFFT.Guidance_msa.scr`
+  010-run-guidance-data-out/sample*-list-nogaps/*/MSA.MAFFT.Guidance_msa.scr |
+  tr " " "\n" |
+  grep -v with-random |
+  tr "\n" " "`
 
 # If these files exists then *'s will expand
 if [[ $SCORE_FILES =~ \* ]]; then
