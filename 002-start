@@ -40,7 +40,7 @@ EXPERIMENT_NAME=trial-$CCD_VER-$UNIPORT_VER
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 
 
-CDD_EXTRACTED="$DATA_OUT/cdd-fasta.tar.gz-extracted"
+CDD_EXTRACTED="$DATA_OUT/cdd-extracted"
 UNIPROT_EXTRACTED_DIR="$DATA_OUT/uniprot-extracted"
 UNIPROT_S_EXTRACTED="uniprot_sprot.fasta"
 UNIPROT_T_EXTRACTED="uniprot_trembl.fasta"
@@ -63,7 +63,6 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
 
 
 function callback {
-    mkdir -p $UNIPROT_EXTRACTED_DIR-new 2> /dev/null && true
     zcat $LATEST_UNIPROT_S > $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED-new
     rm $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED 2> /dev/null && true
     mv $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED{-new,}
