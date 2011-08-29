@@ -27,12 +27,43 @@ source ./api/pipeline.sh
 
 CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab 
 
-LATEST_CDD_TAR=`ls -1d ./data/cdd-*/fasta.tar.gz | sort | tail -1`
-DATA_IN_EXTRACTED="$0-data-in/fasta.tar.gz-extracted"
-DATA_OUT="$0-data-out"
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 
-mkdir -p $DATA_OUT $DATA_IN_EXTRACTED 2> /dev/null && true
+CDD_EXTRACTED="./$EXPERIMENT_NAME/002-start-data-out/cdd-extracted"
+UNIPROT_EXTRACTED="./$EXPERIMENT_NAME/002-start-data-out/uniprot-extracted"
 
+DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
+DATA_OUT_UNIPROT="$DATA_OUT/uniprot"
+DATA_OUT_CDD="$DATA_OUT/cdd"
+
+mkdir -p $DATA_OUT_UNIPROT $DATA_OUT_CDD 2> /dev/null && true
+
+
+
+# Uniprot
+
+function callback {
+  mkdir -p $DATA_OUT_UNIPROT-new 2> /dev/null && true
+    cat $UNIPROT_EXTRACTED/uniprot_{sprot,trembl}.fasta |
+      $CONVERT_FASTA_TO_TAB | cut -s -f 2 |
+      while read one_protein; do
+        seq_len=${#one_protein}
+        seq_len_padded=`printf "%04d" $seq_len`
+        echo $one_protein >> $DATA_OUT_UNIPROT-new/length$seq_len_padded-tab
+      done
+  rm -rf $DATA_OUT_UNIPROT
+  mv $DATA_OUT_UNIPROT{-new,}
+}
+parrent_done_time_prefix="$UNIPROT_EXTRACTED/uniprot_trembl.fasta"
+done_time_prefix=$DATA_OUT_UNIPROT
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Converting to TAB: $UNIPROT_EXTRACTED to $DATA_OUT_UNIPROT" \
+  callback
+
+exit
+
+
+# CDD
 
 function callback {
     mkdir -p $DATA_OUT/all-alignments-tab{,-new} 2> /dev/null && true
