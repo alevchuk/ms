@@ -25,7 +25,12 @@ set -u
 source ./api/pipeline.sh
 
 
-CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab 
+CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab
+
+MIN_SEQ_LENGTH=8     # below this there are much less than 1000 seqs per length
+MAX_SEQ_LENGTH=1000  # above this there are less seqs than per a given length
+
+
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 
@@ -48,16 +53,29 @@ function callback {
       $CONVERT_FASTA_TO_TAB | cut -s -f 2 |
       while read one_protein; do
         seq_len=${#one_protein}
-        seq_len_padded=`printf "%04d" $seq_len`
-        echo $one_protein >> $DATA_OUT_UNIPROT-new/length$seq_len_padded-tab
+
+        # Filer for the length criteria
+        if [ $seq_len -ge $MIN_SEQ_LENGTH ] &&
+          [ $seq_len -le $MAX_SEQ_LENGTH ]; then
+            seq_len_padded=`printf "%04d" $seq_len`
+            echo $one_protein >> \
+              $DATA_OUT_UNIPROT-new/length$seq_len_padded-tab
+        fi
       done
+
+  # Dedup
+  ls $DATA_OUT_UNIPROT-new/length*-tab | while read tab_file; do
+    sort $tab_file | uniq > $tab_file-new
+    mv $tab_file{-new,}
+  done
+
   rm -rf $DATA_OUT_UNIPROT
   mv $DATA_OUT_UNIPROT{-new,}
 }
 parrent_done_time_prefix="$UNIPROT_EXTRACTED/uniprot_trembl.fasta"
 done_time_prefix=$DATA_OUT_UNIPROT
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Converting to TAB: $UNIPROT_EXTRACTED to $DATA_OUT_UNIPROT" \
+  "Doing a reshape from $UNIPROT_EXTRACTED to $DATA_OUT_UNIPROT" \
   callback
 
 exit
