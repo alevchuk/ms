@@ -34,27 +34,28 @@ EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 CDD_EXTRACTED="./$EXPERIMENT_NAME/002-start-data-out/cdd-extracted"
 
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
-DATA_OUT_CDD="$DATA_OUT/cdd"
 
-mkdir -p $DATA_OUT_CDD 2> /dev/null && true
+mkdir -p $DATA_OUT 2> /dev/null && true
 
 
 
 
 function callback {
     mkdir -p $DATA_OUT/all-alignments-tab{,-new} 2> /dev/null && true
-    ls $DATA_IN_EXTRACTED | 
+    ls $CDD_EXTRACTED | 
       while read i; do
-        cat $DATA_IN_EXTRACTED/$i | $CONVERT_FASTA_TO_TAB > \
-          $DATA_OUT/all-alignments-tab-new/$i.tab
+        cat $CDD_EXTRACTED/$i |
+          $CONVERT_FASTA_TO_TAB |
+          egrep -v "^lcl|consensus" |   # Filter out consensus sequences
+          cat > $DATA_OUT/all-alignments-tab-new/$i.tab
       done
     rm -rf $DATA_OUT/all-alignments-tab
     mv $DATA_OUT/all-alignments-tab{-new,}
 }
-parrent_done_time_prefix=$done_time_prefix
+parrent_done_time_prefix=$CDD_EXTRACTED
 done_time_prefix=$DATA_OUT/all-alignments-tab
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Converting to TAB: $DATA_IN_EXTRACTED to $DATA_OUT/all-alignments-tab" \
+  "Doing reshape from $CDD_EXTRACTED to $DATA_OUT/all-alignments-tab" \
   callback # 12 min
 
 
