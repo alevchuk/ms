@@ -17,14 +17,25 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-score.files <<- dir("014-get-scores-data-out", full.names=T)
+scrs.list <- lapply(dir("101-scores-original", full.names=T), read.table)
+scrs.list.rand <-
+  lapply(dir("102-scores-with-random", full.names=T), read.table)
+#scores <- lapply(tables, function(x) {x$V2})
 
-tables <- lapply(score.files, read.table)
-scores <- lapply(tables, function(x) {x$V2})
+
+for (i in 1:length(scrs.list)) {
+  set1 <- scrs.list[[i]]$V2
+  set2 <- scrs.list.rand[[i]]$V2
+
+  #print(c(mean(set1), mean(set2)))
+  dir.create("024-box-plot-data-out", showWarnings=F)
+  png(paste("024-box-plot-data-out/sample-", i, ".png", sep=""))
+  boxplot(list(set1, set2), ylab="GUIDANCE Score")
+  title(paste("Sample-", i, " (", 
+  sprintf("%.3f", mean(set1)), ", ", 
+  sprintf("%.3f", mean(set2)), ")", sep=""))
+  dev.off()
+}
 
 # merge(tables[[1]], tables[[2]], by="V1")
 
-dir.create("024-box-plot-data-out", showWarnings=F)
-png("024-box-plot-data-out/5-samples-of-size100.png")
-boxplot(scores, ylab="GUIDANCE score")
-dev.off()
