@@ -24,8 +24,13 @@ function pipeline {
   done_time=$prefix-done
   parent_time=$parent_prefix-done
 
+  if ! $ALWAYS_RUN && [ ! -f $parent_prefix ] && [ ! -d $parent_prefix ]; then
+    echo "ERROR: Upstream file or directory does not exist: $parent_prefix" >&2
+    exit 1
+  fi
+
   if ! $ALWAYS_RUN && [ ! -f $parent_time ]; then
-    echo "ERROR: Parent done file does not exist: $parent_time" >&2
+    echo "ERROR: Upstream done file does not exist: $parent_time" >&2
     exit 1
   fi
 
