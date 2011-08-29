@@ -2,19 +2,16 @@
 
 /src/*/
 /opt/*
-/
+
 /data/cw
 /data/cdd-*
-/data/notyet-cdd-*
+/data/uniprot-*
 /data/*.tab
-/[0-9]*-data-in
-/[0-9]*-data-out
-/[0-9]*-data-out-s*
-/[0-9]*-jobs
-/
+/trial*
+
 /[0-9]*-done
-/
-/# qsub-many tmp files
+
+# qsub-many tmp files
 /s-[0-9][0-9][0-9][0-9]
 /s-[0-9][0-9][0-9][0-9].e*
 /s-[0-9][0-9][0-9][0-9].o*

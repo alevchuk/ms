@@ -1,0 +1,14 @@
+1. Look at the *.url files
+2. Go to the NEWS page in the *.url file
+3. Write down the the latest version number
+4. Create a directory in the format:
+
+cdd-<version>
+uniprot-<version>
+
+for example:
+cdd-2011-05/
+uniprot-2011-08/
+
+5. cd into these directories and download
+all of the non-NEWS items the appropriate *.url file.

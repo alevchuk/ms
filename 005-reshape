@@ -35,19 +35,6 @@ mkdir -p $DATA_OUT $DATA_IN_EXTRACTED 2> /dev/null && true
 
 
 function callback {
-    mkdir -p $DATA_IN_EXTRACTED{,-new} 2> /dev/null && true
-    tar xf $LATEST_CDD_TAR -C $DATA_IN_EXTRACTED-new
-    rm -rf $DATA_IN_EXTRACTED
-    mv $DATA_IN_EXTRACTED{-new,}
-}
-parrent_done_time_prefix=$LATEST_CDD_TAR
-done_time_prefix=$DATA_IN_EXTRACTED
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Extracting $LATEST_CDD_TAR" \
-   callback # 2 min
-
-
-function callback {
     mkdir -p $DATA_OUT/all-alignments-tab{,-new} 2> /dev/null && true
     ls $DATA_IN_EXTRACTED | 
       while read i; do

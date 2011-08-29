@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+set -e
+set -u
+
+source ./api/pipeline.sh
+
+
+CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab
+
+LATEST_CDD_TAR=$(ls -1d ./data/cdd-*/fasta.tar.gz | sort | tail -1)
+LATEST_UNIPROT_S=$(ls -1d ./data/uniprot-*/uniprot_sprot.fasta.gz |
+  sort | tail -1)
+LATEST_UNIPROT_T=$(ls -1d ./data/uniprot-*/uniprot_trembl.fasta.gz |
+  sort | tail -1)
+
+CCD_VER=$(expr "$LATEST_CDD_TAR" : '.*data/\([^/]*\)/.*')
+UNIPORT_VER=$(expr "$LATEST_UNIPROT_S" : '.*data/\([^/]*\)/.*')
+EXPERIMENT_NAME=trial-$CCD_VER-$UNIPORT_VER
+
+
+
+DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
+
+
+CDD_EXTRACTED="$DATA_OUT/cdd-fasta.tar.gz-extracted"
+UNIPROT_EXTRACTED_DIR="$DATA_OUT/uniprot-extracted"
+UNIPROT_S_EXTRACTED="uniprot_sprot.fasta"
+UNIPROT_T_EXTRACTED="uniprot_trembl.fasta"
+
+mkdir -p $CDD_EXTRACTED 2> /dev/null && true
+mkdir -p $UNIPROT_EXTRACTED_DIR 2> /dev/null && true
+
+
+function callback {
+    mkdir -p $CDD_EXTRACTED-new 2> /dev/null && true
+    tar xf $LATEST_CDD_TAR -C $CDD_EXTRACTED-new
+    rm -rf $CDD_EXTRACTED
+    mv $CDD_EXTRACTED{-new,}
+}
+parrent_done_time_prefix=$LATEST_CDD_TAR
+done_time_prefix=$CDD_EXTRACTED
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Extracting $LATEST_CDD_TAR" \
+   callback
+
+
+function callback {
+    mkdir -p $UNIPROT_EXTRACTED_DIR-new 2> /dev/null && true
+    zcat $LATEST_UNIPROT_S > $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED-new
+    rm $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED 2> /dev/null && true
+    mv $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED{-new,}
+}
+parrent_done_time_prefix=$LATEST_UNIPROT_S
+done_time_prefix=$UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Extracting $LATEST_UNIPROT_S" \
+   callback
+
+function callback {
+    zcat $LATEST_UNIPROT_T > $UNIPROT_EXTRACTED_DIR/$UNIPROT_T_EXTRACTED-new
+    rm $UNIPROT_EXTRACTED_DIR/$UNIPROT_T_EXTRACTED 2> /dev/null && true
+    mv $UNIPROT_EXTRACTED_DIR/$UNIPROT_T_EXTRACTED{-new,}
+}
+parrent_done_time_prefix=$LATEST_UNIPROT_T
+done_time_prefix=$UNIPROT_EXTRACTED_DIR/$UNIPROT_T_EXTRACTED
+pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  "Extracting $LATEST_UNIPROT_T" \
+   callback
