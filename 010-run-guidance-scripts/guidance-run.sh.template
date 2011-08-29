@@ -46,6 +46,9 @@ function callback {
     --seqFile $DATA_IN/$fasta_file --outDir $DATA_OUT-new &> \
     $DATA_OUT-new/stdouterr.log
 
+  # Error out if the score file was not created
+  ls $DATA_OUT-new/MSA.MAFFT.Guidance_msa.scr
+
   # Danger Zone
   rm -rf "$DATA_OUT"
 
