@@ -106,7 +106,10 @@ function callback {
   mv $DATA_OUT/msa-list-with-numseq-and-length-filtered{-new,}
 
   rm $DATA_OUT/msa-list-with-numseq-filtered*
-  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered msa-list-filtered
+  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered \
+    $DATA_OUT/msa-list-filtered
+  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered-done \
+    $DATA_OUT/msa-list-filtered-done
 
 }
 parrent_done_time_prefix=$done_time_prefix
