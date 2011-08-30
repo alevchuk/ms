@@ -41,18 +41,22 @@ set +u
 [ -n "$3" ] && [ "$3" != '-f' ] && (echo "Invalid option $3"; exit 1)
 set -u
 
-DATA_IN="$0-data-in"
-DATA_OUT="$0-data-out"
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+
+
+UPSTREAM_DATA="./$EXPERIMENT_NAME/004-reshape-cdd-data-out"
+
+DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
+DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
 
-
 function callback {
-    echo "Importing (few files) 005-reshape-data-out/msa-*"
-    cp ./005-reshape-data-out/msa-* $DATA_IN/
+    echo "Importing (few files) $UPSTREAM_DATA/msa-*"
+    cp "$UPSTREAM_DATA/msa-"* $DATA_IN/
 }
-parrent_done_time_prefix="./005-reshape-data-out"
+parrent_done_time_prefix=$UPSTREAM_DATA/msa-list-filtered
 done_time_prefix=$DATA_IN
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
   "Importing data into $DATA_IN" callback
@@ -62,13 +66,13 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
 for seed in `seq $N`; do
   sample_name="sample-size$SAMPLE_SIZE-id$seed-list"
   function callback {
-    $0-scripts/sample.R $seed $SAMPLE_SIZE $DATA_IN/msa-list-trimmed > \
+    $0-scripts/sample.R $seed $SAMPLE_SIZE $DATA_IN/msa-list-filtered > \
       "$DATA_OUT/$sample_name"
   }
   
   parrent_done_time_prefix=$done_time_prefix
   done_time_prefix="$DATA_OUT/$sample_name"
   pipeline   $parrent_done_time_prefix   $done_time_prefix \
-    "Sample $sample_name from $DATA_IN/msa-list-trimmed" \
+    "Sample $sample_name from $DATA_IN/msa-list-filtered" \
     callback
 done
