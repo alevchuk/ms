@@ -19,6 +19,9 @@
 
 # Tags: very-slow
 
+# NOTE: msa-list-filtered is the authoritative file,
+#   everything else may not be filtered.
+
 set -e
 set -u
 
@@ -27,24 +30,22 @@ source ./api/pipeline.sh
 
 CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab
 
-
+MIN_MSA_NUMSEQ=19
+MAX_MSA_RESIDUES=100000 # 100k
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
-
-CDD_EXTRACTED="./$EXPERIMENT_NAME/002-start-data-out/cdd-extracted"
-
+DATA_IN_EXTRACTED="./$EXPERIMENT_NAME/002-start-data-out/cdd-extracted"
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 
 mkdir -p $DATA_OUT 2> /dev/null && true
 
 
-
-
 function callback {
     mkdir -p $DATA_OUT/all-alignments-tab{,-new} 2> /dev/null && true
-    ls $CDD_EXTRACTED | 
+    
+    ls $DATA_IN_EXTRACTED | 
       while read i; do
-        cat $CDD_EXTRACTED/$i |
+        cat $DATA_IN_EXTRACTED/$i |
           $CONVERT_FASTA_TO_TAB |
           egrep -v "^lcl|consensus" |   # Filter out consensus sequences
           cat > $DATA_OUT/all-alignments-tab-new/$i.tab
@@ -52,17 +53,21 @@ function callback {
     rm -rf $DATA_OUT/all-alignments-tab
     mv $DATA_OUT/all-alignments-tab{-new,}
 }
-parrent_done_time_prefix=$CDD_EXTRACTED
+parrent_done_time_prefix=$DATA_IN_EXTRACTED
 done_time_prefix=$DATA_OUT/all-alignments-tab
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Doing reshape from $CDD_EXTRACTED to $DATA_OUT/all-alignments-tab" \
-  callback # 12 min
+  "Doing reshape from $DATA_IN_EXTRACTED to $DATA_OUT/all-alignments-tab" \
+  callback # 14 min
+
+
 
 
 function callback {
+  echo "Generating the unfiltered msa-list"
   ls -1 $DATA_OUT/all-alignments-tab/ > $DATA_OUT/msa-list-new
   mv $DATA_OUT/msa-list{-new,}
 
+  echo "Counting numbers of sequences in the unfiltered msa-list"
   cat $DATA_OUT/msa-list |
     while read i; do
       cat $DATA_OUT/all-alignments-tab/$i | wc -l | tr "\n" "\t"
@@ -77,52 +82,35 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
   callback # 5m
 
 
-function callback {
-  rm -rf $DATA_IN_EXTRACTED-trimm{ing,ed}  # Danger Zone
-  rm -rf $DATA_OUT/all-alignments-tab-trimm{ing,ed} # Danger Zone
-
-  mv $DATA_IN_EXTRACTED{,-trimming} >&2 && true
-  mv $DATA_OUT/all-alignments-tab{,-trimming} >&2 && true
-
-  filter_regexp="^[1-3]`printf \"\t\"`"
-
-  echo -n "Number of TAB files removed in data-out: "
-  sort -n  $DATA_OUT/msa-sizes-numseq  | egrep "$filter_regexp" |
-  awk '{print $2}' | while read tab_file; do
-    fasta_file=${tab_file%.tab}
-    rm -v $DATA_IN_EXTRACTED-trimming/$fasta_file
-    rm -v $DATA_OUT/all-alignments-tab-trimming/$tab_file 2>&1 | wc -l
-  done | awk '{s+=$1} END {print s}'
-
-  mv $DATA_IN_EXTRACTED-trimm{ing,ed}
-  mv $DATA_OUT/all-alignments-tab-trimm{ing,ed}
-
-  echo "Extracting msa-sizes-numseq-trimmed from $DATA_OUT/msa-sizes-numseq"
-  sort -n  $DATA_OUT/msa-sizes-numseq  | egrep -v "$filter_regexp" >\
-    $DATA_OUT/msa-sizes-numseq-trimmed-new
-  mv $DATA_OUT/msa-sizes-numseq-trimmed{-new,}
-}
-parrent_done_time_prefix=$done_time_prefix
-done_time_prefix=$DATA_OUT/all-alignments-tab-trimmed
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Trimming all alignments with 3 or less sequences" \
-  callback # 18s
 
 
 function callback {
-  ls -1 $DATA_OUT/all-alignments-tab-trimmed/ > $DATA_OUT/msa-list-trimmed-new
-  mv $DATA_OUT/msa-list-trimmed{-new,}
+  echo "Selecting MSAs that have at least $MIN_MSA_NUMSEQ sequences."
+  sort -n  $DATA_OUT/msa-sizes-numseq  | 
+  awk "\$1 >= $MIN_MSA_NUMSEQ" | # MSAs smaller than  MIN_MSA_NUMSEQ
+  awk "{print \$2 \"\\t\" \$1}" > $DATA_OUT/msa-list-with-numseq-filtered-new
+  mv $DATA_OUT/msa-list-with-numseq-filtered{-new,}
 
-  cat $DATA_OUT/msa-list-trimmed |
+  echo "Counting residues in the selected MSAs and"
+  echo " selecting only the ones that have no more than"
+  echo " $MAX_MSA_RESIDUES residues."
+  cat $DATA_OUT/msa-list-with-numseq-filtered |
     while read i; do
-      head -1 $DATA_OUT/all-alignments-tab-trimmed/$i |
-        awk '{print $2}' | tr -d "\n" | wc -c | tr "\n" "\t"
-      echo $i
-    done > $DATA_OUT/msa-sizes-length-trimmed-new
-  mv $DATA_OUT/msa-sizes-length-trimmed{-new,}
+      msa_name=$(echo -e "$i" | cut -f1)
+      msa_length=$(cat "$DATA_OUT/all-alignments-tab/$msa_name" |
+        cut -f2 | tr -d "\n-" | wc -c)
+
+      [ $msa_length -le $MAX_MSA_RESIDUES ] && echo -e "$i\t$msa_length"
+    done > \
+    $DATA_OUT/msa-list-with-numseq-and-length-filtered-new
+  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered{-new,}
+
+  rm $DATA_OUT/msa-list-with-numseq-filtered*
+  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered msa-list-filtered
+
 }
 parrent_done_time_prefix=$done_time_prefix
-done_time_prefix=$DATA_OUT
+done_time_prefix=$DATA_OUT/msa-list-with-numseq-and-length-filtered
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Getting msa-{list,sizes-lengths} of $DATA_OUT/all-alignments-tab-trimmed" \
-  callback # 6m20s
+  "MSAs with >= $MIN_MSA_NUMSEQ sequences and <= $MAX_MSA_RESIDUES residues" \
+  callback # ?h
