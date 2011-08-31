@@ -22,6 +22,8 @@ set -e
 set -u
 
 # Tags: takes-optional-arguments
+
+SAMPLING_SCRIPT=$0-scripts/sample.R
  
 if [ $# != 2 ] && [ $# != 3 ]; then
   echo "Usage: $0 <sample-size> <number-of-samples>   [-s]" >&2
@@ -66,8 +68,17 @@ pipeline   $parrent_done_time_prefix   $done_time_prefix \
 for seed in `seq $N`; do
   sample_name="sample-size$SAMPLE_SIZE-id$seed-list"
   function callback {
-    $0-scripts/sample.R $seed $SAMPLE_SIZE $DATA_IN/msa-list-filtered > \
+    $SAMPLING_SCRIPT $seed $SAMPLE_SIZE $DATA_IN/msa-list-filtered > \
       "$DATA_OUT/$sample_name"
+
+    mkdir -p "$DATA_OUT/$sample_name-tab-new" 2> /dev/null && true
+    cat "$DATA_OUT/$sample_name" | while read msa_line; do
+      msa_tab_filename=$(printf "$msa_line" | awk '{print $1}')
+      cp "$UPSTREAM_DATA/all-alignments-tab/$msa_tab_filename" \
+        "$DATA_OUT/$sample_name-tab-new"
+    done
+    rm -rf "$DATA_OUT/$sample_name-tab"
+    mv "$DATA_OUT/$sample_name-tab"{-new,}
   }
   
   parrent_done_time_prefix=$done_time_prefix

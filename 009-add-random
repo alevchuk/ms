@@ -1,0 +1,117 @@
+#!/bin/bash
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+source ./api/pipeline.sh
+set -e
+set -u
+
+# Tags: depends-on-ruby-scripts takes-arguments
+
+if [ $# != 1 ] && [ $# != 2 ]; then
+  echo "Usage: $0 <sample-size>  [-s]" >&2
+  echo "" >&2
+  echo "  <sample-size>        how many alignments should be in 1 sample" >&2
+  echo "" >&2
+  echo "  -f                   force always runing, never skip any steps" >&2
+  exit 1
+fi
+
+# Arguments
+SAMPLE_SIZE=$1                              # sample size (mandatory)
+set +u
+[ "$2" == '-f' ] && export ALWAYS_RUN=true  # skip steps (optional)
+[ -n "$2" ] && [ "$2" != '-f' ] && (echo "Invalid option $3"; exit 1)
+set -u
+
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+
+
+UPSTREAM_DATA_UNIPROT="./$EXPERIMENT_NAME/006-reshape-uniprot-data-out/uniprot"
+UPSTREAM_DATA_SAMPLES="./$EXPERIMENT_NAME/008-sample-data-out"
+
+SAMPLE_UNIPROT_SCRIPT="$0-scripts/sample-uniprot.R"
+
+
+
+
+function callback {
+
+  samplefile=$1
+  desired_rand_ratio=$2
+  rand_dir=$3
+
+  mkdir -p "$rand_dir-new" >&2 && true
+  cat $samplefile |
+  while read msa_line; do
+    msa_tab_filename=$(printf "$msa_line" | awk '{print $1}')
+    msa_numseq=$(printf "$msa_line" | cut -f2)
+    msa_numres=$(printf "$msa_line" | cut -f3)
+    msa_avr_seqlen=$(printf "$msa_line" | cut -f4)
+
+    # Pull out random sequences
+    seed=1
+
+    #  <src-prefix>  Place of the Uniprot sequences, binned by length
+    #  <seed>        For the Random number generator
+    #  <num-seq>     How many sequences are in the original MSA?
+    #  <num-res>     How many residues are in the original MSA?
+    #  <rand-ratio>  How much randomness would you like (0.05, 0.1, ..)?
+    random_seqs_list=$($SAMPLE_UNIPROT_SCRIPT \
+      $UPSTREAM_DATA_UNIPROT \
+      $seed \
+      $msa_numseq \
+      $msa_numres \
+      $desired_rand_ratio
+    )
+
+    msa_with_rand_filename="$rand_dir-new/$msa_tab_filename"
+    cp "$samplefile-tab/$msa_tab_filename" "$msa_with_rand_filename"
+
+    # Add sequences to alignment samples
+    count=1
+    for rs in $random_seqs_list; do
+      echo -e "FROM_UNIPROT_RAND$count\t$rs" >> "$msa_with_rand_filename"
+      count=$((count+1)) 
+    done
+  done
+
+  rm -rf "$rand_dir"
+  mv "$rand_dir"{-new,}
+}
+
+
+
+
+for samplefile in "$UPSTREAM_DATA_SAMPLES/sample-size$SAMPLE_SIZE-"*"-list"; do
+
+  for desired_rand_ratio in 0.05 0.1 0.15 0.2; do
+    echo $desired_rand_ratio 2>&2
+
+    rand_dir="$samplefile-tab-rand$desired_rand_ratio"
+    mkdir -p $rand_dir >&2 || true
+   
+    parrent_done_time_prefix=$samplefile
+    done_time_prefix=$rand_dir
+    pipeline   $parrent_done_time_prefix   $done_time_prefix \
+      "Adding X ammount of random sequences to $samplefile \
+       where ($desired_rand_ratio - 0.05) < X <= $desired_rand_ratio" \
+      callback $samplefile $desired_rand_ratio $rand_dir # 3 min per rand_ratio
+  done
+
+done

@@ -29,9 +29,20 @@ source ./api/pipeline.sh
 
 
 CONVERT_FASTA_TO_TAB=./opt/misc-bioinfo-scripts/convert-fasta-to-tab
+FILTER_CDD_SCRIPT=$0-scripts/filter-cdd.R
 
+# Limited by the fact that we need to be able to add 5% random sequences
+# by adding 1 sequence
 MIN_MSA_NUMSEQ=19
+
+# Limited by the length diversity of 2011 Uniport
+## for each individual length Uniprot must provide 1000+ unique proteins
+MIN_MSA_AVR_SEQLEN=8
+MAX_MSA_AVR_SEQLEN=1000
+
+# Limited by the 2011 speed on MSA aligners
 MAX_MSA_RESIDUES=100000 # 100k
+
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 DATA_IN_EXTRACTED="./$EXPERIMENT_NAME/002-start-data-out/cdd-extracted"
@@ -47,7 +58,7 @@ function callback {
       while read i; do
         cat $DATA_IN_EXTRACTED/$i |
           $CONVERT_FASTA_TO_TAB |
-          egrep -v "^lcl|consensus" |   # Filter out consensus sequences
+          egrep -v "^lcl[|]consensus" |   # Filter out consensus sequences
           cat > $DATA_OUT/all-alignments-tab-new/$i.tab
       done
     rm -rf $DATA_OUT/all-alignments-tab
@@ -79,41 +90,35 @@ parrent_done_time_prefix=$done_time_prefix
 done_time_prefix=$DATA_OUT/msa-sizes-numseq
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
   "Getting msa-{list,sizes-numseq} of $DATA_OUT/all-alignments-tab" \
-  callback # 5m
+  callback # 5 min
+
 
 
 
 
 function callback {
-  echo "Selecting MSAs that have at least $MIN_MSA_NUMSEQ sequences."
-  sort -n  $DATA_OUT/msa-sizes-numseq  | 
-  awk "\$1 >= $MIN_MSA_NUMSEQ" | # MSAs smaller than  MIN_MSA_NUMSEQ
-  awk "{print \$2 \"\\t\" \$1}" > $DATA_OUT/msa-list-with-numseq-filtered-new
-  mv $DATA_OUT/msa-list-with-numseq-filtered{-new,}
+  #  <all_alignments_dir> directory will all MSAs in tab format
+  #  <msa_numseq_file>    file that lists all MSAs + their NumSeq size
+  #
+  #  <max_msa_residues>   maximum number of residues (non-gap) in MSA
+  #  <min_msa_avr_seqlen> minimum average sequence length in MSA
+  #  <max_msa_avr_seqlen> maximum -//-
+  #  <min_msa_numseq>     minimum number of sequences (NumSeq) in MSA
+  $FILTER_CDD_SCRIPT \
+    $DATA_OUT/all-alignments-tab \
+    $DATA_OUT/msa-sizes-numseq \
+    \
+    $MAX_MSA_RESIDUES \
+    $MIN_MSA_AVR_SEQLEN \
+    $MAX_MSA_AVR_SEQLEN \
+    $MIN_MSA_NUMSEQ \
+    > $DATA_OUT/msa-list-filtered-new
 
-  echo "Counting residues in the selected MSAs and"
-  echo " selecting only the ones that have no more than"
-  echo " $MAX_MSA_RESIDUES residues."
-  cat $DATA_OUT/msa-list-with-numseq-filtered |
-    while read i; do
-      msa_name=$(echo -e "$i" | cut -f1)
-      msa_length=$(cat "$DATA_OUT/all-alignments-tab/$msa_name" |
-        cut -f2 | tr -d "\n-" | wc -c)
-
-      [ $msa_length -le $MAX_MSA_RESIDUES ] && echo -e "$i\t$msa_length"
-    done > \
-    $DATA_OUT/msa-list-with-numseq-and-length-filtered-new
-  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered{-new,}
-
-  rm $DATA_OUT/msa-list-with-numseq-filtered*
-  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered \
-    $DATA_OUT/msa-list-filtered
-  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered-done \
-    $DATA_OUT/msa-list-filtered-done
-
+  mv $DATA_OUT/msa-list-filtered{-new,}
 }
 parrent_done_time_prefix=$done_time_prefix
-done_time_prefix=$DATA_OUT/msa-list-with-numseq-and-length-filtered
+done_time_prefix=$DATA_OUT/msa-list-filtered
 pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "MSAs with >= $MIN_MSA_NUMSEQ sequences and <= $MAX_MSA_RESIDUES residues" \
-  callback # ?h
+  "Filtering MSAs from $DATA_OUT/all-alignments-tab to 
+   $DATA_OUT/msa-list-filtered" \
+  callback # 4 min

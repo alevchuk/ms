@@ -53,30 +53,30 @@ MIN_MSA_NUMSEQ <- as.numeric(script.args[[6]])
 MAX_MSA_NUMSEQ <- NA # :)
 
 
-cat("Selecting MSAs that have at least", MIN_MSA_NUMSEQ, "sequences.\n",
+
+
+
+cat("Counting residues in MSAs and selecting only MSAs that have:", "\n",
+  "  1. No LESS than", MIN_MSA_NUMSEQ, "sequences\n",
+  "  2. No LESS than", MIN_MSA_AVR_SEQLEN, "average sequence length\n",
+  "  3. No MORE than", MAX_MSA_AVR_SEQLEN, "average sequence length\n",
+  "  4. No MORE than", sprintf("%dK", round(MAX_MSA_RESIDUES / 1000)),
+    "residues total\n",
   file=stderr())
+
 
 msa_list <- read.delim(MSA_SIZES_NUMSEQ_FILE)
 colnames(msa_list) <- c("NumSeq", "AlignmentFile")
 msa_list <- msa_list[order(msa_list[,"NumSeq"]),]
 
-
-
+# Filter #1
 msa_list <-
   msa_list[msa_list[,"NumSeq"] >= MIN_MSA_NUMSEQ, ]
 
-
-cat("Counting residues in the selected MSAs and", 
-  "selecting only the ones that have:", "\n",
-  "  1. No MORE than", MAX_MSA_AVR_SEQLEN, "average sequence length\n",
-  "  2. No LESS than", MIN_MSA_AVR_SEQLEN, "average sequence length\n",
-  "  3. No MORE than", MAX_MSA_RESIDUES, "residues total\n",
-  file=stderr())
-
-msa_list <-
+invisible(
   apply(msa_list, 1, function(x) {
-    num_seq <- x[[1]]
-    alignmet_file <- x[[2]]
+    num_seq <- as.numeric(x[["NumSeq"]]) # apply casts msa_list to char :(
+    alignmet_file <- x[["AlignmentFile"]]
 
     msa <- read.delim(paste(ALL_ALIGNMENTS_DIR, alignmet_file, sep="/"))
     colnames(msa) <- c("SeqID", "Sequence")
@@ -84,20 +84,29 @@ msa_list <-
     num_residues <- sum(sapply(msa[,"Sequence"], function (x) {
       sum(strsplit(as.character(x), "")[[1]] != "-")
     }))
-    cat(alignmet_file, "\t", num_seq, "\t", num_residues, "\n")
-    list(num_seq, alignmet_file, num_residues)
+
+    rounded_avr_seq_length <- round(num_residues / num_seq)
+
+    filter_it_out <- F
+
+    # Filter #2
+    if (rounded_avr_seq_length < MIN_MSA_AVR_SEQLEN)
+      filter_it_out <- T
+
+    # Filter #3
+    if (rounded_avr_seq_length > MAX_MSA_AVR_SEQLEN)
+      filter_it_out <- T
+
+    # Filter #4
+    if (num_residues > MAX_MSA_RESIDUES)
+      filter_it_out <- T
+
+    if (!filter_it_out)
+      cat(alignmet_file, "\t", num_seq, "\t", num_residues, "\t",
+        rounded_avr_seq_length, "\n")
   })
+)
 
-quit()
-
-#
-#      [ $msa_length -le $MAX_MSA_RESIDUES ] && echo -e "$i\t$msa_length"
-#    done > \
-#    $DATA_OUT/msa-list-with-numseq-and-length-filtered-new
-#  mv $DATA_OUT/msa-list-with-numseq-and-length-filtered{-new,}
-#
-#
-#
 #length <- MSA_NUMRES / MSA_NUMSEQ
 #length_in_filename <- sprintf("%04d", round(length))
 #seq_file <-

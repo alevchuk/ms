@@ -49,8 +49,10 @@ function pipeline {
         (echo "ERROR: Parent directory  must exist to track progress.";
         exit 1) || exit 1
       set -e
-  
-      $payload
+
+      set +u 
+      $payload $5 $6 $7 $8 $9
+      set -u 
   
       mv $in_progress $done_time
       touch $done_time
