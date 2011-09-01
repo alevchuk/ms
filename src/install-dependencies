@@ -27,3 +27,9 @@ mv Makefile{-new,}
 make
 make install
 cd ../..
+
+tar xf parallel-20110822.tar.bz2
+cd parallel-20110822
+./configure --prefix=`pwd`/../../opt/parallel-20110822 && \
+  make && \
+  make install
