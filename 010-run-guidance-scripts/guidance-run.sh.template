@@ -24,39 +24,45 @@ cd %%WD%%
 
 source ./api/pipeline.sh
 
-export PATH=%%MAFFT_PATH%%:$PATH
-GUIDANCE_EXEC=%%GUIDANCE_EXEC%%
+
+
+DATA_IN_DIR=%%DATA_IN%%
+
+DATA_IN_FASTA_FILE=%%FASTA_FILE%%
 
 DATA_OUT=%%DATA_OUT%%
-DATA_IN=%%DATA_IN%%
+
+
+
+export PATH=%%MAFFT_PATH%%:$PATH
+
+GUIDANCE_EXEC=%%GUIDANCE_EXEC%%
 
 
 mkdir -p "$DATA_OUT"{,-new} 2> /dev/null && true
 
 function callback {
-
-  fasta_file=%%FASTA_FILE%%
-
   if [ -n $DATA_OUT ]; then # variable must be non empty
     rm -rf "$DATA_OUT-new"
   fi
   mkdir -p "$DATA_OUT-new"
 
   $GUIDANCE_EXEC --msaProgram MAFFT --seqType aa \
-    --seqFile $DATA_IN/$fasta_file --outDir $DATA_OUT-new &> \
+    --seqFile $DATA_IN_FASTA_FILE --outDir $DATA_OUT-new &> \
     $DATA_OUT-new/stdouterr.log
 
   # Error out if the score file was not created
-  ls $DATA_OUT-new/MSA.MAFFT.Guidance_msa.scr
+  ls $DATA_OUT-new/MSA.MAFFT.Guidance_msa.scr > /dev/null
 
-  # Danger Zone
   rm -rf "$DATA_OUT"
-
   mv $DATA_OUT{-new,}
 
+  # Report score
+  ls $DATA_OUT/MSA.MAFFT.Guidance_msa.scr
 }
-parrent_done_time_prefix="$DATA_IN"
+upstream_done_time_prefix="$DATA_IN_DIR"
 done_time_prefix="$DATA_OUT"
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
-  "Running GUIDANCE on $DATA_IN. Output is going into $DATA_OUT" \
+pipeline $upstream_done_time_prefix $done_time_prefix \
+  "Running GUIDANCE on $upstream_done_time_prefix \
+   Output: $done_time_prefix" \
   callback

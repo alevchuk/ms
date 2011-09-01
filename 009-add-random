@@ -103,10 +103,10 @@ for samplefile in "$UPSTREAM_DATA_SAMPLES/sample-size$SAMPLE_SIZE-"*"-list"; do
   for desired_rand_ratio in 0.05 0.1 0.15 0.2; do
     echo $desired_rand_ratio 2>&2
 
-    rand_dir="$samplefile-tab-rand$desired_rand_ratio"
+    rand_dir="$samplefile-tab-rand$desired_rand_ratio-tab"
     mkdir -p $rand_dir >&2 || true
    
-    upstream_done_time_prefix=$samplefile
+    upstream_done_time_prefix=$samplefile-tab
     done_time_prefix=$rand_dir
     pipeline   $upstream_done_time_prefix   $done_time_prefix \
       "Adding X ammount of random sequences to $samplefile \

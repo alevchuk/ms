@@ -46,55 +46,60 @@ set +u
 set -u
 
 
-
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+UPSTREAM_DIR="./$EXPERIMENT_NAME/008-sample-data-out"
 
-UPSTREAM_DATA_UNIPROT="./$EXPERIMENT_NAME/008-sample-data-out/"
+GUIDANCE_RUN_TEMPLATE="$0-scripts/guidance-run.sh.template"
 
 DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
-(cd $UPSTREAM_DATA_UNIPROT; echo sample-size$SAMPLE_SIZE-*-list) |
-tr " " "\n" | while read sample
+(cd $UPSTREAM_DIR
+ls -d sample-size$SAMPLE_SIZE-*-list-*tab) | while read sample
 do
   data_in_final="$DATA_IN/$sample-nogaps"
   function callback {
       mkdir -p $data_in_final{,-new} 2> /dev/null && true
-      cat "008-sample-data-out/$sample" | sed 's/.tab$//' |
-        while read file_name; do
-          cat "005-reshape-data-in/fasta.tar.gz-extracted-trimmed/$file_name" |
-            tr -d "-" > "$data_in_final-new/$file_name" | # remove gaps
-            sed '/^$/d' # remove double newlines
-
+      (cd "$UPSTREAM_DIR/$sample/"; ls -d *.tab) |
+        while read file_name
+        do
+          cat "$UPSTREAM_DIR/$sample/$file_name" |
+            tr -d "-"  | # remove gaps
+	    awk '{print ">" $1 "\n" $2}' | # convert to fasta
+            cat > "$data_in_final-new/$file_name"
         done
       rm -rf $data_in_final
       mv $data_in_final{-new,}
   }
-  upstream_done_time_prefix="008-sample-data-out/$sample"
+  upstream_done_time_prefix="$UPSTREAM_DIR/$sample"
   done_time_prefix=$data_in_final
   pipeline   $upstream_done_time_prefix   $done_time_prefix \
     "Importing 008-sample-data-out/$sample-list items \
-     from 005-reshape-data-in/fasta.tar.gz-extracted-trimmed \
-     removing all gaps (MSA alignment information) as we import" callback
+     from $upstream_done_time_prefix to $done_time_prefix \
+     converting to fasta and removing gaps (alignment information) \
+     as we import" callback
 done
 
 
 echo "Creating tasks in $DATA_IN/tasks" >&2
 mkdir -p $DATA_IN/tasks 2> /dev/null && true
-(cd $DATA_IN; echo sample-*-list-nogaps | tr " " "\n") |
+(cd $DATA_IN; echo sample-*-list-tab*-nogaps | tr " " "\n") |
 while read sample; do
-  (cd $DATA_IN/$sample; echo *.FASTA | tr " " "\n") |
+  echo $sample
+  (cd $DATA_IN/$sample; echo *.FASTA.tab | tr " " "\n") |
   while read fasta_file; do
-    cat 010-run-guidance-scripts/guidance-run.sh.template |
+    out_sh="$DATA_IN/tasks/$sample-$fasta_file.sh"
+    cat $GUIDANCE_RUN_TEMPLATE |
       sed "s|%%WD%%|`pwd`|g" |
       sed "s|%%ALWAYS_RUN%%|$ALWAYS_RUN|g" |
-      sed "s|%%FASTA_FILE%%|$fasta_file|g" |
       sed "s|%%MAFFT_PATH%%|$MAFFT_PATH|g" |
       sed "s|%%GUIDANCE_EXEC%%|$GUIDANCE_EXEC|g" |
       sed "s|%%DATA_IN%%|$DATA_IN/$sample|g" |
+      sed "s|%%FASTA_FILE%%|$DATA_IN/$sample/$fasta_file|g" |
       sed "s|%%DATA_OUT%%|$DATA_OUT/$sample/$fasta_file|g" |
-        cat > $DATA_IN/tasks/$sample-$fasta_file-qsub-sh
+        cat > $out_sh
+      chmod +x $out_sh
   done
 done
 
