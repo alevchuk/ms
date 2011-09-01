@@ -109,7 +109,8 @@ for samplefile in "$UPSTREAM_DATA_SAMPLES/sample-size$SAMPLE_SIZE-"*"-list"; do
     upstream_done_time_prefix=$samplefile-tab
     done_time_prefix=$rand_dir
     pipeline   $upstream_done_time_prefix   $done_time_prefix \
-      "Adding X ammount of random sequences to $samplefile \
+      "Adding random sequences to $samplefile \
+       the ratio of new residues after injection is X \
        where ($desired_rand_ratio - 0.05) < X <= $desired_rand_ratio" \
       callback $samplefile $desired_rand_ratio $rand_dir # 3 min per rand_ratio
   done
