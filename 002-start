@@ -55,9 +55,9 @@ function callback {
     rm -rf $CDD_EXTRACTED
     mv $CDD_EXTRACTED{-new,}
 }
-parrent_done_time_prefix=$LATEST_CDD_TAR
+upstream_done_time_prefix=$LATEST_CDD_TAR
 done_time_prefix=$CDD_EXTRACTED
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Extracting $LATEST_CDD_TAR" \
    callback
 
@@ -67,9 +67,9 @@ function callback {
     rm $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED 2> /dev/null && true
     mv $UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED{-new,}
 }
-parrent_done_time_prefix=$LATEST_UNIPROT_S
+upstream_done_time_prefix=$LATEST_UNIPROT_S
 done_time_prefix=$UNIPROT_EXTRACTED_DIR/$UNIPROT_S_EXTRACTED
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Extracting $LATEST_UNIPROT_S" \
    callback
 
@@ -78,8 +78,8 @@ function callback {
     rm $UNIPROT_EXTRACTED_DIR/$UNIPROT_T_EXTRACTED 2> /dev/null && true
     mv $UNIPROT_EXTRACTED_DIR/$UNIPROT_T_EXTRACTED{-new,}
 }
-parrent_done_time_prefix=$LATEST_UNIPROT_T
+upstream_done_time_prefix=$LATEST_UNIPROT_T
 done_time_prefix=$UNIPROT_EXTRACTED_DIR/$UNIPROT_T_EXTRACTED
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Extracting $LATEST_UNIPROT_T" \
    callback

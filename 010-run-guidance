@@ -46,12 +46,17 @@ set +u
 set -u
 
 
-DATA_IN="$0-data-in"
-DATA_OUT="$0-data-out"
+
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+
+UPSTREAM_DATA_UNIPROT="./$EXPERIMENT_NAME/008-sample-data-out/"
+
+DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
+DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
-(cd 008-sample-data-out/; echo sample-size$SAMPLE_SIZE-*-list) | tr " " "\n" |
-while read sample
+(cd $UPSTREAM_DATA_UNIPROT; echo sample-size$SAMPLE_SIZE-*-list) |
+tr " " "\n" | while read sample
 do
   data_in_final="$DATA_IN/$sample-nogaps"
   function callback {
@@ -66,9 +71,9 @@ do
       rm -rf $data_in_final
       mv $data_in_final{-new,}
   }
-  parrent_done_time_prefix="008-sample-data-out/$sample"
+  upstream_done_time_prefix="008-sample-data-out/$sample"
   done_time_prefix=$data_in_final
-  pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  pipeline   $upstream_done_time_prefix   $done_time_prefix \
     "Importing 008-sample-data-out/$sample-list items \
      from 005-reshape-data-in/fasta.tar.gz-extracted-trimmed \
      removing all gaps (MSA alignment information) as we import" callback

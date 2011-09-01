@@ -64,9 +64,9 @@ function callback {
     rm -rf $DATA_OUT/all-alignments-tab
     mv $DATA_OUT/all-alignments-tab{-new,}
 }
-parrent_done_time_prefix=$DATA_IN_EXTRACTED
+upstream_done_time_prefix=$DATA_IN_EXTRACTED
 done_time_prefix=$DATA_OUT/all-alignments-tab
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Doing reshape from $DATA_IN_EXTRACTED to $DATA_OUT/all-alignments-tab" \
   callback # 14 min
 
@@ -86,9 +86,9 @@ function callback {
     done > $DATA_OUT/msa-sizes-numseq-new
   mv $DATA_OUT/msa-sizes-numseq-new $DATA_OUT/msa-sizes-numseq
 }
-parrent_done_time_prefix=$done_time_prefix
+upstream_done_time_prefix=$done_time_prefix
 done_time_prefix=$DATA_OUT/msa-sizes-numseq
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Getting msa-{list,sizes-numseq} of $DATA_OUT/all-alignments-tab" \
   callback # 5 min
 
@@ -116,9 +116,9 @@ function callback {
 
   mv $DATA_OUT/msa-list-filtered{-new,}
 }
-parrent_done_time_prefix=$done_time_prefix
+upstream_done_time_prefix=$done_time_prefix
 done_time_prefix=$DATA_OUT/msa-list-filtered
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Filtering MSAs from $DATA_OUT/all-alignments-tab to 
    $DATA_OUT/msa-list-filtered" \
   callback # 4 min

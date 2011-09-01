@@ -58,9 +58,9 @@ function callback {
     echo "Importing (few files) $UPSTREAM_DATA/msa-*"
     cp "$UPSTREAM_DATA/msa-"* $DATA_IN/
 }
-parrent_done_time_prefix=$UPSTREAM_DATA/msa-list-filtered
+upstream_done_time_prefix=$UPSTREAM_DATA/msa-list-filtered
 done_time_prefix=$DATA_IN
-pipeline   $parrent_done_time_prefix   $done_time_prefix \
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Importing data into $DATA_IN" callback
 
 
@@ -81,9 +81,9 @@ for seed in `seq $N`; do
     mv "$DATA_OUT/$sample_name-tab"{-new,}
   }
   
-  parrent_done_time_prefix=$done_time_prefix
+  upstream_done_time_prefix=$done_time_prefix
   done_time_prefix="$DATA_OUT/$sample_name"
-  pipeline   $parrent_done_time_prefix   $done_time_prefix \
+  pipeline   $upstream_done_time_prefix   $done_time_prefix \
     "Sample $sample_name from $DATA_IN/msa-list-filtered" \
     callback
 done
