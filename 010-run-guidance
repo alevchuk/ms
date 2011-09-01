@@ -84,7 +84,7 @@ done
 
 echo "Creating tasks in $DATA_IN/tasks" >&2
 mkdir -p $DATA_IN/tasks 2> /dev/null && true
-(cd $DATA_IN; echo sample-*-list-tab*-nogaps | tr " " "\n") |
+(cd $DATA_IN; echo sample-size$SAMPLE_SIZE-*-list-tab*-nogaps | tr " " "\n") |
 while read sample; do
   echo $sample
   (cd $DATA_IN/$sample; echo *.FASTA.tab | tr " " "\n") |
@@ -102,5 +102,3 @@ while read sample; do
       chmod +x $out_sh
   done
 done
-
-#echo $DATA_IN/tasks/*-qsub-sh | tr " " "\n"
