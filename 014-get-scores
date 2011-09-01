@@ -20,14 +20,32 @@
 set -e
 set -u
 
-DATA_OUT="$0-data-out"
+if [ $# != 1 ] && [ $# != 2 ]; then
+  echo "Usage: $0 <sample-size>  [-s]" >&2
+  echo "" >&2
+  echo "  <sample-size>        how many alignments should be in 1 sample" >&2
+  echo "" >&2
+  echo "  -f                   force always runing, never skip any steps" >&2
+  exit 1
+fi
+
+# Arguments
+SAMPLE_SIZE=$1                              # sample size (mandatory)
+set +u
+[ "$2" == '-f' ] && export ALWAYS_RUN=true  # skip steps (optional)
+[ -n "$2" ] && [ "$2" != '-f' ] && (echo "Invalid option $3"; exit 1)
+set -u
+
+
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+UPSTREAM_DIR="./$EXPERIMENT_NAME/010-run-guidance-data-out"
+
+DATA_OUT="$EXPERIMENT_NAME/$0-data-out/sample-size$SAMPLE_SIZE"
 mkdir -p $DATA_OUT-new 2> /dev/null && true
 
 SCORE_FILES=`echo \
-  010-run-guidance-data-out/sample*-list-nogaps/*/MSA.MAFFT.Guidance_msa.scr |
-  tr " " "\n" |
-  grep -v with-random |
-  tr "\n" " "`
+  $UPSTREAM_DIR/sample-size$SAMPLE_SIZE*-nogaps/*/MSA.MAFFT.Guidance_msa.scr |
+  tr " " "\n"`
 
 # If these files exists then *'s will expand
 if [[ $SCORE_FILES =~ \* ]]; then
@@ -38,18 +56,18 @@ fi
 
 grep "MEAN_RES_PAIR_SCORE" $SCORE_FILES | while read line; do
 
-    sample=`echo $line |
-     awk -F"/" '{print $2}' | # Parse directory structure
-     awk -F- '{print $1 "-" $2 "-" $3}' # Parse file name structure
-    `
+  sample=$(expr "$line" : '.*\(sample-.*-nogaps\)/[^/]*/.*') || (
+    echo "ERROR: Could not parse \"$line\""; exit 1) || exit 1
 
-    echo $line |
-      awk '{print $1, $4}' | # $2 is MEAN_RES_PAIR_SCORE, $4 is MEAN_COL_SCORE
-      awk -F/ '{print $3, $4}' |
-      awk '{print $1 "\t" $3}' |
-      cat >> $DATA_OUT-new/$sample-mafft-guidance-msa-scr
+  msa=$(expr "$line" : '.*sample-.*-nogaps/\([^/]*\)/.*') || (
+    echo "ERROR: Could not parse \"$line\""; exit 1) || exit 1
 
-   done
+  score=$(expr "$line" : '.*MEAN_COL_SCORE \([^ ]*\).*') || (
+    echo "ERROR: Could not parse \"$line\""; exit 1) || exit 1
+
+  echo -e "$score\t$msa" >> $DATA_OUT-new/$sample-mafft-guidance-msa-scr
+
+done
 
 for i in $DATA_OUT-new/*-mafft-guidance-msa-scr; do
   sort -nk 2 $i > $i-new
@@ -64,4 +82,5 @@ rm -rf $DATA_OUT
 mv $DATA_OUT{-new,}
 
 
-wc -l 014-get-scores-data-out/*
+echo "$DATA_OUT"
+(cd $DATA_OUT; wc -l *)
