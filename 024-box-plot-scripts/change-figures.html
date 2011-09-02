@@ -1,0 +1,76 @@
+<html>
+<head>
+</head>
+
+<SCRIPT LANGUAGE="JavaScript">
+<!--
+// Use the following variable to specify 
+// the number of images
+var NumberOfImages = 5
+
+var img = new Array(NumberOfImages)
+
+// Use the following variables to specify the image names:
+img[0] = "sample-1.png"
+img[1] = "sample-2.png"
+img[2] = "sample-3.png"
+img[3] = "sample-4.png"
+img[4] = "sample-5.png"
+
+var imgNumber = 0
+
+function NextImage()
+{
+    imgNumber++
+    if (imgNumber == NumberOfImages)
+        imgNumber = 0
+    document.images["flip-image"].src = img[imgNumber]
+}
+
+function PreviousImage()
+{
+    imgNumber--
+    if (imgNumber < 0)
+        imgNumber = NumberOfImages - 1
+    document.images["flip-image"].src = img[imgNumber]
+}
+
+//-->
+</SCRIPT>
+
+<body>
+
+<table border="0">
+<tbody><tr>
+<td colspan="2" align="CENTER">
+<img src="sample-1.png" name="flip-image">
+</td>
+<td rowspan=2>
+<p><b>Population size:</b> 19,428 msa alignments from CDD after filtering</p>
+<p><b>Random sample size:</b> 100 msa alignments, very diverse dimensions (num seq., seq. length)</p>
+<p><b>Random sequences:</b> from Unprot. Sequence length exactly matches the Average MSA seq. len. (gaps removed)</p>
+<p><b>Number of random sequence:</b>  as many as needed to get close to the
+    desired random ratio.
+    The actual random ratio is bound to be less then the
+    desired ratio by within 0.05 (5% of residues are noise). 
+    Ratio of foreign residues after injection is X where 
+    (desired_rand_ratio - 0.05) &lt; X &#8804; desired_rand_ratio</p>
+<p></p>
+<p></p>
+<p></p>
+</td>
+</tr>
+
+<tr>
+<td  align="CENTER">
+<a href="javascript:PreviousImage()">
+<img src="http://www.mcfedries.com/JavaScript/reverse.gif" border="0"></a>
+<a href="javascript:NextImage()">
+<img src="http://www.mcfedries.com/JavaScript/forward.gif" border="0"></a>
+</td>
+</tr>
+</tbody></table>
+
+
+
+</body>

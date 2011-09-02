@@ -16,26 +16,71 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
-scrs.list <- lapply(dir("101-scores-original", full.names=T), read.table)
-scrs.list.rand <-
-  lapply(dir("102-scores-with-random", full.names=T), read.table)
-#scores <- lapply(tables, function(x) {x$V2})
+SAMPLE_SIZE <- 100
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 
+MAIN_DF <- data.frame()
 
-for (i in 1:length(scrs.list)) {
-  set1 <- scrs.list[[i]]$V2
-  set2 <- scrs.list.rand[[i]]$V2
+UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "014-get-scores-data-out", sep="/")
+OUT_DIR <- paste(EXPERIMENT_NAME, "024-box-plot-out", sep="/")
 
-  #print(c(mean(set1), mean(set2)))
-  dir.create("024-box-plot-data-out", showWarnings=F)
-  png(paste("024-box-plot-data-out/sample-", i, ".png", sep=""))
-  boxplot(list(set1, set2), ylab="GUIDANCE Score")
-  title(paste("Sample-", i, " (", 
-  sprintf("%.3f", mean(set1)), ", ", 
-  sprintf("%.3f", mean(set2)), ")", sep=""))
-  dev.off()
+msa_names <- dir(paste(UPSTREAM_DIR,
+  paste("sample-size", SAMPLE_SIZE, sep=""), sep="/"), "-scr*", full.names=T)
+
+scr.list <-
+  lapply(msa_names, read.table, col.names=c("score", "seq_filename"))
+names(scr.list) <- msa_names
+
+for(sample_name in names(scr.list)) {
+  cmd <- paste("expr '", sample_name, "' : '.*sample-size", SAMPLE_SIZE, 
+    ".*", "id\\([0-9]\\+\\)'", sep="")
+  sample_number <- sh(cmd)
+
+  cmd <- paste("expr '", sample_name, "' : '.*sample-size", SAMPLE_SIZE, 
+    ".*", "rand\\([.0-9]\\+\\)'", sep="")
+  random_ratio <- sh(cmd)
+  if (random_ratio == "") random_ratio <<- 0
+
+  for (scr in scr.list[[sample_name]][,"score"]) {
+    MAIN_DF <<- rbind(MAIN_DF,
+      c(as.numeric(sample_number), as.numeric(random_ratio), scr)
+    )
+  }
 }
+
+colnames(MAIN_DF) <- c("sample.number", "random.ratio", "score")
+
+invisible(
+  lapply (unique(MAIN_DF[,"sample.number"]), function (sample_number) {
+
+    dir.create(OUT_DIR, showWarnings=F)
+    sh(paste("cp 024-box-plot-scripts/*html ", OUT_DIR, sep=""))
+
+    png(paste(OUT_DIR, "/sample-", sample_number, ".png", sep=""),
+    height=600, width=500,
+    type="cairo")
+
+    subset_df <- MAIN_DF[MAIN_DF[,"sample.number"] == sample_number,]
+    all_scores <-
+    lapply(unique(subset_df[,"random.ratio"]), function(random_ratio) {
+      scores <-
+        subset_df[subset_df[,"random.ratio"] == random_ratio,"score"]
+    }) 
+    boxplot(all_scores, ylab="GUIDANCE Score",
+      names=c("Orig", "(0, 5%]", "(5%, 10%]", "(10%, 15%]", "(15%, 20%]")
+    )
+
+    title(paste("Sample-", sample_number, " (Means: ", 
+    paste(sapply(all_scores, function(x){sprintf("%.3f", mean(x))}),
+    sep="", collapse=" , "),
+    ")",
+    sep=""))
+
+    dev.off()
+  })
+)
 
 # merge(tables[[1]], tables[[2]], by="V1")
 
