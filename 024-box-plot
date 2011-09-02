@@ -50,6 +50,8 @@ for(sample_name in names(scr.list)) {
   }
 }
 
+#print(MAIN_DF)
+
 colnames(MAIN_DF) <- c("sample.number", "random.ratio", "score")
 
 invisible(
@@ -59,15 +61,17 @@ invisible(
     sh(paste("cp 024-box-plot-scripts/*html ", OUT_DIR, sep=""))
 
     png(paste(OUT_DIR, "/sample-", sample_number, ".png", sep=""),
-    height=600, width=500,
+    height=600, width=1000,
     type="cairo")
 
     subset_df <- MAIN_DF[MAIN_DF[,"sample.number"] == sample_number,]
+    random_ratios <- unique(subset_df[,"random.ratio"])
     all_scores <-
-    lapply(unique(subset_df[,"random.ratio"]), function(random_ratio) {
+    lapply(random_ratios, function(random_ratio) {
       scores <-
         subset_df[subset_df[,"random.ratio"] == random_ratio,"score"]
-        scores <- scores[scores != 0]
+        #scores <- scores[scores != 0]
+        #scores[scores == 0] <- 1e-5
     })
     #print(all_scores)
 
@@ -79,9 +83,16 @@ invisible(
       xlab="Amount of foreign residues after injection",
       log="y"
     )
+
     axis(2,c(1e-5,1e-4,1e-3,1e-2,1e-1,1), las=2)
-    axis(1, c(1,2,3,4,5),
-      labels=c("Original", "(0, 5%]", "(5%, 10%]", "(10%, 15%]", "(15%, 20%]"))
+
+    # TODO: Use random_ratios to generate labels
+    lables <- c("Original", "(0, 5%]", "(5%, 10%]", "(10%, 15%]",
+        "(15%, 20%]", "(20%, 25%]","(25%, 30%]","(30%, 35%]","(35%, 40%]",
+        "(40%, 45%]", "(45%, 50%]"
+        )
+
+    axis(1, 1:length(lables), labels=lables)
 
     title(paste("Sample-", sample_number, " (Means: ", 
     paste(sapply(all_scores, function(x){sprintf("%.3f", mean(x))}),
