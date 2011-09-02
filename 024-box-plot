@@ -67,10 +67,21 @@ invisible(
     lapply(unique(subset_df[,"random.ratio"]), function(random_ratio) {
       scores <-
         subset_df[subset_df[,"random.ratio"] == random_ratio,"score"]
-    }) 
-    boxplot(all_scores, ylab="GUIDANCE Score",
-      names=c("Orig", "(0, 5%]", "(5%, 10%]", "(10%, 15%]", "(15%, 20%]")
+        scores <- scores[scores != 0]
+    })
+    #print(all_scores)
+
+
+    boxplot(all_scores, #ylab="GUIDANCE Score",
+      #range=0, # no outliers
+      ylim = c(1e-5,1),
+      axes=FALSE, ylab="",
+      xlab="Amount of foreign residues after injection",
+      log="y"
     )
+    axis(2,c(1e-5,1e-4,1e-3,1e-2,1e-1,1), las=2)
+    axis(1, c(1,2,3,4,5),
+      labels=c("Original", "(0, 5%]", "(5%, 10%]", "(10%, 15%]", "(15%, 20%]"))
 
     title(paste("Sample-", sample_number, " (Means: ", 
     paste(sapply(all_scores, function(x){sprintf("%.3f", mean(x))}),
