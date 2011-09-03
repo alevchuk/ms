@@ -62,7 +62,9 @@ grep "MEAN_RES_PAIR_SCORE" $SCORE_FILES | while read line; do
   msa=$(expr "$line" : '.*sample-.*-nogaps/\([^/]*\)/.*') || (
     echo "ERROR: Could not parse out msa in \"$line\""; exit 1)
 
-  score=$(expr "$line" : '.*MEAN_COL_SCORE \([^ ]*\).*') || (
+  #score=$(expr "$line" : '.*MEAN_COL_SCORE \([^ ]*\).*') || (
+  #  echo "ERROR: Could not parse out score in \"$line\""; exit 1)
+  score=$(expr "$line" : '.*MEAN_RES_PAIR_SCORE \([^ ]*\).*') || (
     echo "ERROR: Could not parse out score in \"$line\""; exit 1)
 
   echo -e "$score\t$msa" >> $DATA_OUT-new/$sample-mafft-guidance-msa-scr

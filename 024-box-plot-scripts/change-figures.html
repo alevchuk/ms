@@ -47,7 +47,7 @@ function PreviousImage()
 <img src="sample-1.png" name="flip-image">
 </td>
 <td rowspan=2>
-<h1>GUIDANCE scores</h1>
+<p><b>Method:</b> GUIDANCE</p>
 <p><b>Population size:</b> 19,428 msa alignments from CDD after filtering</p>
 <p><b>Random sample size:</b> 100 msa alignments, very diverse dimensions (number of sequences, length of sequences)</p>
 <p><b>Random sequences:</b> from Unprot. Sequence length exactly matches the Average MSA seq. len. (gaps removed)</p>
@@ -57,10 +57,7 @@ function PreviousImage()
     desired ratio by within 0.05 (5% of residues are noise). 
     Ratio of foreign residues after injection is X where 
     (desired_rand_ratio - 0.05) &lt; X &#8804; desired_rand_ratio</p>
-<p><b>Computational Labour:</b> (5 samples) &times; (5 injections of foreign sequences) &times; (100 original msa alignments) &times; (GUIDANCE score by 100 msa guide-tree BP tree reconstruction and re-alignments). Total: 250,000 re-alignments with MAFFT.</p>
-<p></p>
-<p></p>
-<p></p>
+<p><b>Computational Labour:</b> (5 samples) &times; (1 original group + 10 injections of foreign sequences) &times; (100 original msa alignments) &times; (GUIDANCE score by 100 msa guide-tree BP tree reconstruction and re-alignments). Total: 550,000 re-alignments with MAFFT.</p>
 </td>
 </tr>
 

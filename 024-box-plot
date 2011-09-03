@@ -30,7 +30,7 @@ msa_names <- dir(paste(UPSTREAM_DIR,
   paste("sample-size", SAMPLE_SIZE, sep=""), sep="/"), "-scr*", full.names=T)
 
 scr.list <-
-  lapply(msa_names, read.table, col.names=c("score", "seq_filename"))
+  lapply(msa_names, read.table, col.names=c("score", "msa.filename"))
 names(scr.list) <- msa_names
 
 for(sample_name in names(scr.list)) {
@@ -45,14 +45,16 @@ for(sample_name in names(scr.list)) {
 
   for (scr in scr.list[[sample_name]][,"score"]) {
     MAIN_DF <<- rbind(MAIN_DF,
-      c(as.numeric(sample_number), as.numeric(random_ratio), scr)
+      list(as.numeric(sample_number), as.numeric(random_ratio),
+      scr, scr)
     )
   }
 }
 
 #print(MAIN_DF)
 
-colnames(MAIN_DF) <- c("sample.number", "random.ratio", "score")
+colnames(MAIN_DF) <-
+  c("sample.number", "random.ratio", "msa.filename", "score")
 
 invisible(
   lapply (unique(MAIN_DF[,"sample.number"]), function (sample_number) {
@@ -68,28 +70,34 @@ invisible(
     random_ratios <- unique(subset_df[,"random.ratio"])
     all_scores <-
     lapply(random_ratios, function(random_ratio) {
-      scores <-
-        subset_df[subset_df[,"random.ratio"] == random_ratio,"score"]
-        #scores <- scores[scores != 0]
-        #scores[scores == 0] <- 1e-5
+      subset_subset_df <-
+        subset_df[subset_df[,"random.ratio"] == random_ratio, ]
+      scores <- subset_subset_df[,"score"]
+
+      dropped_msa_list <- subset_subset_df[scores == 0,]
+      scores <- scores[scores != 0] # Drop
+      if (nrow(dropped_msa_list) != 0) print(dropped_msa_list)
+      #scores[scores == 0] <- 1e-5
+
+      scores
     })
     #print(all_scores)
 
 
     boxplot(all_scores, #ylab="GUIDANCE Score",
       #range=0, # no outliers
-      ylim = c(1e-5,1),
+      #ylim = c(1e-5,1),
       axes=FALSE, ylab="",
-      xlab="Amount of foreign residues after injection",
-      log="y"
+      xlab="Amount of foreign residues after injection"
+      #, log="y"
     )
 
-    axis(2,c(1e-5,1e-4,1e-3,1e-2,1e-1,1), las=2)
+    axis(2, seq(0,1,by=0.1), las=2)
 
-    # TODO: Use random_ratios to generate labels
+    ## TODO: Use random_ratios to generate labels
     lables <- c("Original", "(0, 5%]", "(5%, 10%]", "(10%, 15%]",
-        "(15%, 20%]", "(20%, 25%]","(25%, 30%]","(30%, 35%]","(35%, 40%]",
-        "(40%, 45%]", "(45%, 50%]"
+        "(15%, 20%]", "(20%, 25%]","(25%, 30%]","(30%, 35%]",
+        "(35%, 40%]", "(40%, 45%]", "(45%, 50%]"
         )
 
     axis(1, 1:length(lables), labels=lables)
