@@ -1,0 +1,35 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+SAMPLE_SIZE <- 100
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
+EXPERIMENT_NAME
+#UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "028-get-normd-scores-data-out", sep="/")
+#OUT_DIR <- paste(EXPERIMENT_NAME, "029-box-plot-normd-out", sep="/")
+#
+#msa_names <- dir(paste(UPSTREAM_DIR,
+#  paste("sample-size", SAMPLE_SIZE, sep=""), sep="/"), "-scr*", full.names=T)
+#
+#scr.list <-
+#  lapply(msa_names, read.table, col.names=c("score", "msa.filename"))
+#names(scr.list) <- msa_names
+
+
