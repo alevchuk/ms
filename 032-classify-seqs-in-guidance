@@ -21,9 +21,6 @@ set -u
 
 source ./api/pipeline.sh
 
-SAMPLE_SIZE=100
-NUM_THRESHOLDS=100
-RAND_AMOUNT=0.05
 
 # Tags: takes-optional-arguments
 
@@ -32,26 +29,49 @@ if [ $# != 3 ]; then
   echo "" >&2
   echo "  <sample-size>        You may have several sizes of samples." >&2
   echo "                       Which size group do you whan scored?" >&2
-  echo "  <num-thresholds>      " >&2 
-  echo "  <rand-ammount>        " >&2 
+  echo "  <threshold-step>     E.g. 0.01 " >&2 
+  echo "  <rand-ammount>       E.g. 0.05 " >&2 
   echo "" >&2
   exit 1
 fi
+
+SAMPLE_SIZE=$1
+THRESHOLD_STEP=$2
+RAND_AMOUNT=$3
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 UPSTREAM_DIR="./$EXPERIMENT_NAME/010-run-guidance-data-out"
 
 GUIDANCE_RUN_TEMPLATE="$0-scripts/guidance-run.sh.template"
 
-DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
+#DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
-mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
+mkdir -p $DATA_OUT 2> /dev/null && true
 
 SCORE_FILE="MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names"
 
 function callback {
+  spec="sample-size$SAMPLE_SIZE-id*-list-tab-rand$RAND_AMOUNT-tab-nogaps"
+  all_score_files=$(ls $UPSTREAM_DIR/$spec/*/$SCORE_FILE)
 
-  echo "Working..."
+  for seq_scores_file in $all_score_files; do
+    sample_id=$(printf "$seq_scores_file" | awk -F/ '{print $4}')
+    #sample_id=$(expr "$sample_id_raw" : '.*id\([0-9]*\)') || (
+    #echo "ERROR: Could not parse out sample id in \"$sample_id_raw\""; exit 1)
+    msa_tab_filename=$(printf "$seq_scores_file" | awk -F/ '{print $5}')
+
+    mkdir "$DATA_OUT/$sample_id" 2> /dev/null && true
+    outfile="$DATA_OUT/$sample_id/$msa_tab_filename-cutoffs"
+    cat /dev/null > $outfile
+    for t in `seq 0 $THRESHOLD_STEP 1`; do
+      cat $seq_scores_file | grep -v SEQUENCE_NAME | grep -v "#END" | \
+        ruby -ne "
+          seq, score = \$_.split
+          puts(seq + ':::' + score) if score.to_f > $t
+        " | tr "\n" " " >> $outfile
+      echo >> $outfile # End of the line
+    done
+  done
 
 }
 
