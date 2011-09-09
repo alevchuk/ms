@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+#!/bin/bash
 
 # UNNAMED is a classifier of outlier sequences in multiple alignments
 # Copyright (C) 2011  Aleksandr Levchuk
@@ -16,20 +16,51 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+set -e
+set -u
 
-SAMPLE_SIZE <- 100
-EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+source ./api/pipeline.sh
 
-EXPERIMENT_NAME
-#UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "028-get-normd-scores-data-out", sep="/")
-#OUT_DIR <- paste(EXPERIMENT_NAME, "029-box-plot-normd-out", sep="/")
-#
-#msa_names <- dir(paste(UPSTREAM_DIR,
-#  paste("sample-size", SAMPLE_SIZE, sep=""), sep="/"), "-scr*", full.names=T)
-#
-#scr.list <-
-#  lapply(msa_names, read.table, col.names=c("score", "msa.filename"))
-#names(scr.list) <- msa_names
+SAMPLE_SIZE=100
+NUM_THRESHOLDS=100
+RAND_AMOUNT=0.05
 
+# Tags: takes-optional-arguments
 
+if [ $# != 3 ]; then
+  echo "Usage: $0 <sample-size> <num-thresholds> <rand-amount>" >&2
+  echo "" >&2
+  echo "  <sample-size>        You may have several sizes of samples." >&2
+  echo "                       Which size group do you whan scored?" >&2
+  echo "  <num-thresholds>      " >&2 
+  echo "  <rand-ammount>        " >&2 
+  echo "" >&2
+  exit 1
+fi
+
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+UPSTREAM_DIR="./$EXPERIMENT_NAME/010-run-guidance-data-out"
+
+GUIDANCE_RUN_TEMPLATE="$0-scripts/guidance-run.sh.template"
+
+DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
+DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
+mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
+
+SCORE_FILE="MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names"
+
+function callback {
+
+  echo "Working..."
+
+}
+
+# Pick the latest done file
+upstream_done_time_prefix=$(
+  ls -t $UPSTREAM_DIR/sample-size$SAMPLE_SIZE-id*-list-tab-nogaps/*-done |
+    head -n 1 | sed 's/-done$//'
+)
+done_time_prefix=$DATA_OUT
+pipeline   $upstream_done_time_prefix   $done_time_prefix \
+  "Classify all MSA alignments with the GUIDANCE per-seq seq_res_pair score" \
+  callback
