@@ -1,0 +1,80 @@
+#!/usr/bin/env Rscript
+
+#library("verification")
+library(ROCR)
+
+file1 <- "./pointers/032-rand0.05-pfam10128.FASTA.tab-res-pair-seq-scr"
+
+raw <- read.table(file1)
+predicted_2p <- c( as.vector(raw$V2))
+
+observed <- rep(1, length(predicted_2p))
+observed[grep("_RAND[0-9]", raw$V1)] = 0
+
+
+normalize <- function(predicted) {
+  predicted_shift <- predicted - min(predicted)
+  predicted_shift / max(predicted_shift)
+}
+
+predicnorm_2p <- c(normalize(predicted_2p))
+#predicnorm_3p <- c(p(predicted_3p))
+#predicnorm_4p <- c(p(predicted_4p))
+#predicnorm_5p <- c(p(predicted_5p))
+#predicnorm_6p <- c(p(predicted_6p))
+#predicnorm_7p <- c(p(predicted_7p))
+
+pred_2p <- prediction(predicnorm_2p, observed)
+#pred_3p <- prediction(predicnorm_3p, observed)
+#pred_4p <- prediction(predicnorm_4p, observed)
+#pred_5p <- prediction(predicnorm_5p, observed)
+#pred_6p <- prediction(predicnorm_6p, observed)
+#pred_7p <- prediction(predicnorm_7p, observed)
+
+auc_2p <- performance(pred_2p, "auc")@y.values[[1]][1]
+#auc_3p <- performance(pred_3p, "auc")@y.values[[1]][1]
+#auc_4p <- performance(pred_4p, "auc")@y.values[[1]][1]
+#auc_5p <- performance(pred_5p, "auc")@y.values[[1]][1]
+#auc_6p <- performance(pred_6p, "auc")@y.values[[1]][1]
+#auc_7p <- performance(pred_7p, "auc")@y.values[[1]][1]
+
+
+png("roc.png", width = 600, height = 600, units = "px", type="cairo")
+
+par(mar=c(5, 5, 2, 2))
+par(cex.lab=2, cex.axis=1.5, font.main=12)
+
+plot(performance(pred_2p,"tpr","fpr"), col=8, lwd=24)
+#plot(performance(pred_3p,"tpr","fpr"), col=4, lwd=16, add=T)
+#plot(performance(pred_4p,"tpr","fpr"), col=3, lwd=8, add=T)
+#plot(performance(pred_5p,"tpr","fpr"), col=2, lwd=4, add=T)
+#plot(performance(pred_6p,"tpr","fpr"), col=8, lwd=2, add=T)
+#plot(performance(pred_7p,"tpr","fpr"), col=1, lwd=1, add=T)
+
+axis(1, c())
+axis(2, c(0, 1:10/10))
+axis(3, c(0, 1:10/10))
+box()
+
+#grid(col="black") #lty=3, col="gray")
+abline( v=0:20/20, h=0:20/20, lty=3, col="gray") 
+
+leg.txt <- c(
+#  paste(sep="", "GUIDANCE (", signif(auc_7p, 3), " auc)"),
+#  paste(sep="", "6-mers (", signif(auc_6p, 3), " auc)"),
+#  paste(sep="", "5-mers (", signif(auc_5p, 3), " auc)"),
+#  paste(sep="", "4-mers (", signif(auc_4p, 3), " auc)"),
+#  paste(sep="", "3-mers (", signif(auc_3p, 3), " auc)"),
+  paste(sep="", "GUIDANCE (", signif(auc_2p, 3), " auc)")
+)
+
+legend("bottomright", inset=0.037, leg.txt, 
+  title="auc = area under the curve",
+  col = c(1,
+          8,
+          2,
+          3,
+          4,
+          8), lwd = c(1,2,4,8,16,24), cex=1.5)
+
+dev.off()
