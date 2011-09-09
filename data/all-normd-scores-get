@@ -1,0 +1,8 @@
+#!/bin/bash
+
+EXPREIMENT_NAME=./trial-cdd-2011-08-v2.31-uniprot-2011-08
+cd $EXPREIMENT_NAME/002-start-data-out/cdd-extracted
+ls | grep FASTA$ | while read f; do
+  echo -n $f ": "
+  ./opt/norMD1_3/normd $f
+done > ./data/all-normd-scores
