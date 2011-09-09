@@ -46,7 +46,7 @@ for seq_id in `seq 1 $num_seq`; do
     echo "$score" >&2
     exit 1 )
 
-  echo "$score" >> $out_seq_scr_file
+  echo "-$score" >> $out_seq_scr_file
 
 done
 
