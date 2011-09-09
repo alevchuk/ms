@@ -21,15 +21,32 @@ set -u
 
 source ./api/pipeline.sh
 
-NORMD="./opt/norMD1_3/normd"
+NORMD_RUN_TEMPLATE="$0-scripts/run.sh.template"
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 UPSTREAM="./$EXPERIMENT_NAME/010-run-guidance-data-out"
+
+DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 
-mkdir -p $DATA_OUT 2> /dev/null && true
+RAM_DIR=/dev/shm/$EXPERIMENT_NAME-normd-scr
 
-ls $UPSTREAM/sample-size100-id*-list-tab-rand*nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa; do
-  echo "cd `pwd`; $NORMD $msa > $msa-normd"
-  #$NORMD $msa 
-done #> $DATA_OUT/all-scores
+
+
+mkdir -p $DATA_IN/tasks $DATA_OUT 2> /dev/null && true
+
+
+ls $UPSTREAM/sample-size100-id1-list-tab-rand0.05-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
+  canonical_name=$(echo "$msa_fasta" | awk -F/ '{print $4 "-" $5}')
+
+  out_sh="$DATA_IN/tasks/$canonical_name.sh"
+  cat $NORMD_RUN_TEMPLATE |
+    sed "s|%%RAM_DIR%%|$RAM_DIR|g" |
+    sed "s|%%DATA_OUT%%|$DATA_OUT|g" |
+    sed "s|%%WD%%|`pwd`|g" |
+    sed "s|%%MSA_FASTA%%|$msa_fasta|g" |
+    sed "s|%%CANONICAL_NAME%%|$canonical_name|g" |
+      cat > $out_sh
+    chmod +x $out_sh
+
+done

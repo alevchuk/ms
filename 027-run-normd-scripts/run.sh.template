@@ -1,0 +1,54 @@
+#!/bin/bash
+
+set -e
+set -u
+
+working_d=%%WD%%
+
+RAM_DIR=%%RAM_DIR%%
+
+DATA_OUT=%%DATA_OUT%%
+
+
+msa_fasta=%%MSA_FASTA%%
+
+canonical_name=%%CANONICAL_NAME%%
+
+
+
+NORMD="./opt/norMD1_3/normd"
+
+cd $working_d
+msa_tab=$msa_fasta-tab
+num_seq=$(wc -l $msa_tab | awk '{print $1}')
+
+mkdir -p $RAM_DIR
+
+out_seq_scr_file=$DATA_OUT/$canonical_name-seq-scr
+cat /dev/null > $out_seq_scr_file
+
+for seq_id in `seq 1 $num_seq`; do
+  echo $seq_id
+  ram_file=$RAM_DIR/$canonical_name-seq$seq_id-removed
+
+  # Remove a sequence
+  cat $msa_tab | awk "NR!=$seq_id" > $ram_file
+
+  # Convert tab to FASTA
+  cat $ram_file | awk '{print ">" $1 "\n" $2}' > $ram_file.FASTA
+
+  # Run NorMD 
+  set +e
+  score=$($NORMD $ram_file.FASTA)
+  set -e
+
+  (echo "$score" | grep "ERROR") && (
+    echo "$score" >&2
+    exit 1 )
+
+  echo "$score" >> $out_seq_scr_file
+
+done
+
+rm $RAM_DIR/*
+rmdir $RAM_DIR

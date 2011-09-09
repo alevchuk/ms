@@ -23,9 +23,6 @@ paste(UPSTREAM_DIR, "*-scr", sep="/")
 scr_names <- sh(paste("ls",
   paste(UPSTREAM_DIR, "*-scr", sep="/"), sep=" "))
 
-#scr.list <-
-#  lapply(msa_names, read.table, col.names=c("score", "msa.filename"))
-#names(scr.list) <- msa_names
 
 MAIN_DF = data.frame()
 FILENAMES_DF = data.frame()
@@ -58,6 +55,7 @@ library(ROCR)
 file1 <- "./pointers/032-rand0.05-pfam10128.FASTA.tab-res-pair-seq-scr"
 
 
+# Normalize: Subtract min, divide by max
 
 normalize <- function(predicted) {
   predicted_shift <- predicted - min(predicted)
