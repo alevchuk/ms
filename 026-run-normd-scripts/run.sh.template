@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -e
+set -u
+
+working_d=%%WD%%
+
+DATA_OUT=%%DATA_OUT%%
+
+
+msa_fasta=%%MSA_FASTA%%
+
+canonical_name=%%CANONICAL_NAME%%
+
+
+
+NORMD="./opt/norMD1_3/normd"
+SCORING_MATRIX="./opt/norMD1_3/gon250.bla"
+NORMD_OPTS="$SCORING_MATRIX 0 0 0 -v"
+
+cd $working_d
+msa_tab=$msa_fasta-tab
+num_seq=$(wc -l $msa_tab | awk '{print $1}')
+
+out_seq_scr_file=$DATA_OUT/$canonical_name-whole-msa-normd-scr
+
+# Run NorMD 
+set +e
+score_raw=$($NORMD $msa_fasta $NORMD_OPTS)
+set -e
+
+(echo "$score_raw" | grep "ERROR") && (
+  echo "$score_raw" >&2
+  exit 1 )
+
+normd=$(echo "$score_raw" | egrep "^norMD" | awk '{print $2}')
+lqrid=$(echo "$score_raw" | egrep "^LQR" | awk '{print $2}')
+md=$(echo "$score_raw" | egrep "^MD" | awk '{print $2}')
+maxmd=$(echo "$score_raw" | egrep "^maxMD" | awk '{print $2}')
+# By the way: NORMD = MD / (MaxMD * LQRID)
+
+echo -e "$normd" > $out_seq_scr_file
+sort -k2 $out_seq_scr_file > $out_seq_scr_file-srt
+mv $out_seq_scr_file-srt $out_seq_scr_file        

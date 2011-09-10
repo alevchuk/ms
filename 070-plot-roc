@@ -18,17 +18,23 @@ UPSTREAM_DIR <- paste(EXPERIMENT_NAME,
 
 
 UPSTREAM_DIR <-
-  "./trial-cdd-2011-08-v2.31-uniprot-2011-08/027-run-normd-data-out/"
+  "./trial-cdd-2011-08-v2.31-uniprot-2011-08/027-run-normd-with-removals-data-out"
 
 
 OUT_DIR <- paste(EXPERIMENT_NAME, "070-plot-roc-out", sep="/")
 
-#score_files_pattern <- paste(UPSTREAM_DIR, "*-md-seq-scr", sep="/")
-#score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-seq-scr", sep="/")
-score_files_pattern <- paste(UPSTREAM_DIR, "*cd03569.FASTA.tab-normdmod-seq-scr", sep="/")
-#score_files_pattern <- paste(UPSTREAM_DIR, "*-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-md-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*cd03569.FASTA.tab-normdmod-seq-scr",
+  sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-dx2-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-dx1-seq-scr", sep="/")
+
+
 scr_names <- sh(paste("ls", score_files_pattern, sep=" "))
-scr_names
+#scr_names
 
 MAIN_DF = data.frame()
 FILENAMES_DF = data.frame()
@@ -49,6 +55,7 @@ MAIN_DF <- cbind(MAIN_DF, FILENAMES_DF)
 colnames(MAIN_DF) <- c("predicted", "observed", "secquence.id", "source.file")
 
 
+# NO NO MAIN_DF <- MAIN_DF[MAIN_DF["predicted"] < 5.0, ]
 
 
 
@@ -110,7 +117,8 @@ box()
 abline( v=0:20/20, h=0:20/20, lty=3, col="gray") 
 
 leg.txt <- c(
-  paste(sep="", "NorMD (", signif(auc_2p, 3), " auc)")
+  paste(sep="", "NorMD change ratio (",
+    signif(auc_2p, 3), " auc)")
 #  paste(sep="", "7-mers (", signif(auc_7p, 3), " auc)"),
 #  paste(sep="", "6-mers (", signif(auc_6p, 3), " auc)"),
 #  paste(sep="", "5-mers (", signif(auc_5p, 3), " auc)"),
@@ -121,11 +129,11 @@ leg.txt <- c(
 
 legend("bottomright", inset=0.037, leg.txt, 
   title="auc = area under the curve",
-  col = c(1,
+  col = c(3,
           8,
           2,
           3,
           4,
-          8), lwd = c(1,2,4,8,16,24), cex=1.5)
+          8), lwd = c(4,2,4,8,16,24), cex=1.5)
 
 dev.off()

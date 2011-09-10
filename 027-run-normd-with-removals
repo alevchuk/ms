@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -e
+set -u
+
+source ./api/pipeline.sh
+
+NORMD_RUN_TEMPLATE="$0-scripts/run.sh.template"
+
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+
+# Here I get alignments
+UPSTREAM_MSA="./$EXPERIMENT_NAME/010-run-guidance-data-out"
+
+# Here I get the whole NorMD scores of the alignments
+UPSTREAM_NORMD="./$EXPERIMENT_NAME/026-run-normd-data-out"
+
+DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
+DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
+
+RAM_DIR=/dev/shm/$EXPERIMENT_NAME-normd-scr
+
+
+
+mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
+
+
+ls $UPSTREAM_MSA/sample-size100-id1-list-tab-rand0.05-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
+  canonical_name=$(echo "$msa_fasta" | awk -F/ '{print $4 "-" $5}')
+
+  out_sh="$DATA_IN/$canonical_name.sh"
+  cat $NORMD_RUN_TEMPLATE |
+    sed "s|%%RAM_DIR%%|$RAM_DIR|g" |
+    sed "s|%%UPSTREAM_NORMD%%|$UPSTREAM_NORMD|g" |
+    sed "s|%%DATA_OUT%%|$DATA_OUT|g" |
+    sed "s|%%WD%%|`pwd`|g" |
+    sed "s|%%MSA_FASTA%%|$msa_fasta|g" |
+    sed "s|%%CANONICAL_NAME%%|$canonical_name|g" |
+      cat > $out_sh
+    chmod +x $out_sh
+
+done
