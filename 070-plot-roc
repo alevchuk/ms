@@ -16,13 +16,19 @@ UPSTREAM_DIR <- paste(EXPERIMENT_NAME,
   paste("sample-size", SAMPLE_SIZE, "-id1-list-tab-rand", RAND_AMOUNT,
     "-tab-nogaps", sep=""), sep="/")
 
+
+UPSTREAM_DIR <-
+  "./trial-cdd-2011-08-v2.31-uniprot-2011-08/027-run-normd-data-out/"
+
+
 OUT_DIR <- paste(EXPERIMENT_NAME, "070-plot-roc-out", sep="/")
 
-UPSTREAM_DIR
-paste(UPSTREAM_DIR, "*-scr", sep="/")
-scr_names <- sh(paste("ls",
-  paste(UPSTREAM_DIR, "*-scr", sep="/"), sep=" "))
-
+#score_files_pattern <- paste(UPSTREAM_DIR, "*-md-seq-scr", sep="/")
+#score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*cd03569.FASTA.tab-normdmod-seq-scr", sep="/")
+#score_files_pattern <- paste(UPSTREAM_DIR, "*-scr", sep="/")
+scr_names <- sh(paste("ls", score_files_pattern, sep=" "))
+scr_names
 
 MAIN_DF = data.frame()
 FILENAMES_DF = data.frame()
@@ -52,17 +58,15 @@ dir.create(OUT_DIR, showWarnings=F)
 
 library(ROCR)
 
-file1 <- "./pointers/032-rand0.05-pfam10128.FASTA.tab-res-pair-seq-scr"
+# This does not change ANYTHING
+## Normalize: Subtract min, divide by max of the result
+#normalize <- function(predicted) {
+#  predicted_shifted <- predicted - min(predicted)
+#  predicted_shifted / max(predicted_shifted)
+#}
+#predicnorm_2p <- c(normalize(MAIN_DF["predicted"]))
 
-
-# Normalize: Subtract min, divide by max
-
-normalize <- function(predicted) {
-  predicted_shift <- predicted - min(predicted)
-  predicted_shift / max(predicted_shift)
-}
-
-predicnorm_2p <- c(normalize(MAIN_DF["predicted"]))
+predicnorm_2p <- c(MAIN_DF["predicted"])
 #predicnorm_3p <- c(p(predicted_3p))
 #predicnorm_4p <- c(p(predicted_4p))
 #predicnorm_5p <- c(p(predicted_5p))
@@ -95,7 +99,7 @@ par(cex.lab=2, cex.axis=1.5, font.main=12)
 #plot(performance(pred_5p,"tpr","fpr"), col=2, lwd=4, add=T)
 #plot(performance(pred_6p,"tpr","fpr"), col=8, lwd=2, add=T)
 #plot(performance(pred_7p,"tpr","fpr"), col=1, lwd=1, add=T)
-plot(performance(pred_2p,"tpr","fpr"), col=8, lwd=4)
+plot(performance(pred_2p,"tpr","fpr"), col=3, lwd=4)
 
 axis(1, c())
 axis(2, c(0, 1:10/10))
@@ -106,7 +110,7 @@ box()
 abline( v=0:20/20, h=0:20/20, lty=3, col="gray") 
 
 leg.txt <- c(
-  paste(sep="", "GUIDANCE (", signif(auc_2p, 3), " auc)")
+  paste(sep="", "NorMD (", signif(auc_2p, 3), " auc)")
 #  paste(sep="", "7-mers (", signif(auc_7p, 3), " auc)"),
 #  paste(sep="", "6-mers (", signif(auc_6p, 3), " auc)"),
 #  paste(sep="", "5-mers (", signif(auc_5p, 3), " auc)"),

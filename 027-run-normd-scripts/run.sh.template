@@ -17,19 +17,27 @@ canonical_name=%%CANONICAL_NAME%%
 
 
 NORMD="./opt/norMD1_3/normd"
+SCORING_MATRIX="./opt/norMD1_3/gon250.bla"
+NORMD_OPTS="$SCORING_MATRIX 0 0 0 -v"
 
 cd $working_d
 msa_tab=$msa_fasta-tab
 num_seq=$(wc -l $msa_tab | awk '{print $1}')
 
-mkdir -p $RAM_DIR
+mkdir -p $RAM_DIR 2> /dev/null && true
 
-out_seq_scr_file=$DATA_OUT/$canonical_name-seq-scr
+out_seq_scr_file=$DATA_OUT/$canonical_name-normd-seq-scr
+out_seq_mod_scr_file=$DATA_OUT/$canonical_name-normdmod-seq-scr
+out_seq_md_scr_file=$DATA_OUT/$canonical_name-md-seq-scr
+out_seq_lqrid_scr_file=$DATA_OUT/$canonical_name-lqrid-seq-scr
 cat /dev/null > $out_seq_scr_file
+cat /dev/null > $out_seq_mod_scr_file
+cat /dev/null > $out_seq_md_scr_file
 
 for seq_id in `seq 1 $num_seq`; do
   echo $seq_id
   ram_file=$RAM_DIR/$canonical_name-seq$seq_id-removed
+  seq_name=$(cat $msa_tab | awk "NR==$seq_id" | awk '{print $1}')
 
   # Remove a sequence
   cat $msa_tab | awk "NR!=$seq_id" > $ram_file
@@ -39,16 +47,41 @@ for seq_id in `seq 1 $num_seq`; do
 
   # Run NorMD 
   set +e
-  score=$($NORMD $ram_file.FASTA)
+  score_raw=$($NORMD $ram_file.FASTA $NORMD_OPTS)
   set -e
 
-  (echo "$score" | grep "ERROR") && (
-    echo "$score" >&2
+  (echo "$score_raw" | grep "ERROR") && (
+    echo "$score_raw" >&2
     exit 1 )
 
-  echo "-$score" >> $out_seq_scr_file
+  normd=$(echo "$score_raw" | egrep "^norMD" | awk '{print $2}')
+  lqrid=$(echo "$score_raw" | egrep "^LQR" | awk '{print $2}')
+  md=$(echo "$score_raw" | egrep "^MD" | awk '{print $2}')
+  maxmd=$(echo "$score_raw" | egrep "^maxMD" | awk '{print $2}')
+  # By the way: NORMD = MD / (MaxMD * LQRID)
 
+  modified_normd=$(ruby -e "puts $md / $maxmd") # Don't use as a web service
+
+  # Negated the per-sequence NorMD removal scores
+  #   
+  # Negation was done because if a removal causes the score to go up
+  # then that implies that the removed sequence is deleterious
+  # the overall MSA alignment score.
+
+  echo -e "$seq_name\t-$normd" >> $out_seq_scr_file
+  echo -e "$seq_name\t-$modified_normd" >> $out_seq_mod_scr_file
+  echo -e "$seq_name\t-$md" >> $out_seq_md_scr_file
+  echo -e "$seq_name\t-$lqrid" >> $out_seq_lqrid_scr_file
+
+  rm $ram_file
 done
 
-rm $RAM_DIR/*
-rmdir $RAM_DIR
+sort -k2 $out_seq_scr_file         > $out_seq_scr_file-srt
+sort -k2 $out_seq_mod_scr_file     > $out_seq_mod_scr_file-srt
+sort -k2 $out_seq_md_scr_file      > $out_seq_md_scr_file-srt
+sort -k2 $out_seq_lqrid_scr_file   > $out_seq_lqrid_scr_file-srt
+
+mv $out_seq_scr_file-srt        $out_seq_scr_file        
+mv $out_seq_mod_scr_file-srt    $out_seq_mod_scr_file    
+mv $out_seq_md_scr_file-srt     $out_seq_md_scr_file     
+mv $out_seq_lqrid_scr_file-srt  $out_seq_lqrid_scr_file  
