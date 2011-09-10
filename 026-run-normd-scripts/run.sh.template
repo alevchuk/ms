@@ -22,7 +22,8 @@ cd $working_d
 msa_tab=$msa_fasta-tab
 num_seq=$(wc -l $msa_tab | awk '{print $1}')
 
-out_seq_scr_file=$DATA_OUT/$canonical_name-whole-msa-normd-scr
+out_normd_file=$DATA_OUT/$canonical_name-whole-msa-normd-scr
+out_normd_mod_file=$DATA_OUT/$canonical_name-whole-msa-normd-mod-scr
 
 # Run NorMD 
 set +e
@@ -39,6 +40,13 @@ md=$(echo "$score_raw" | egrep "^MD" | awk '{print $2}')
 maxmd=$(echo "$score_raw" | egrep "^maxMD" | awk '{print $2}')
 # By the way: NORMD = MD / (MaxMD * LQRID)
 
-echo -e "$normd" > $out_seq_scr_file
-sort -k2 $out_seq_scr_file > $out_seq_scr_file-srt
-mv $out_seq_scr_file-srt $out_seq_scr_file        
+normd_mod=$(ruby -e "puts $md / $maxmd")
+
+echo -e "$normd" > $out_normd_file
+sort -k2 $out_normd_file > $out_normd_file-srt
+mv $out_normd_file-srt $out_normd_file        
+
+
+echo -e "$normd_mod" > $out_normd_mod_file
+sort -k2 $out_normd_mod_file > $out_normd_mod_file-srt
+mv $out_normd_mod_file-srt $out_normd_mod_file        

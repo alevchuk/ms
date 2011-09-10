@@ -1,0 +1,71 @@
+#!/usr/bin/env Rscript
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+SAMPLE_SIZE <- 100
+RAND_AMOUNT <- 0.05
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
+OUT_DIR <- paste(EXPERIMENT_NAME, "070-build-roc-classifer-data-out", sep="/")
+
+# GUIDANCE
+UPSTREAM_DIR <- paste(EXPERIMENT_NAME,
+  "032-get-guidance-seq-scores-data-out",
+  paste("rand", RAND_AMOUNT, sep=""),
+  paste("sample-size", SAMPLE_SIZE, "-id1-list-tab-rand", RAND_AMOUNT,
+    "-tab-nogaps", sep=""), sep="/")
+
+UPSTREAM_DIR <- "./trial-cdd-2011-08-v2.31-uniprot-2011-08/027-run-normd-with-removals-data-out"
+
+score_files_pattern <- paste(UPSTREAM_DIR, "*-scr", sep="/") # GUIDANCE
+score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-dx1-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-mod-seq-scr", sep="/")
+score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-dx1-mod-seq-scr", sep="/")
+
+
+
+
+scr_names <- sh(paste("ls", score_files_pattern, sep=" "))
+
+MAIN_DF <- data.frame()
+FILENAMES_DF = data.frame()
+
+for (scr_file in scr_names) {
+
+  raw <- read.table(scr_file)
+  predicted <- c( as.vector(raw$V2))
+  
+  observed <- rep(1, length(predicted))
+  observed[grep("_RAND[0-9]", raw$V1)] = 0
+
+  MAIN_DF <<- rbind(MAIN_DF, cbind(predicted, observed))
+  FILENAMES_DF <<- rbind(FILENAMES_DF, cbind(as.character(raw$V1), scr_file))
+}
+
+MAIN_DF <- cbind(MAIN_DF, FILENAMES_DF)
+colnames(MAIN_DF) <- c("predicted", "observed", "secquence.id", "source.file")
+
+
+library(ROCR)
+
+pred <- prediction(MAIN_DF["predicted"], MAIN_DF["observed"])
+auc <- performance(pred, "auc")@y.values[[1]][1]
+
+
+
+leg_label <- paste(sep="", "GUIDANCE (", signif(auc, 3), " auc)")
+leg_label <- paste(sep="", "NorMD (", signif(auc, 3), " auc)")
+leg_label <- paste(sep="", "NorMD dx (", signif(auc, 3), " auc)")
+leg_label <- paste(sep="", "NorMD modified (", signif(auc, 3), " auc)")
+leg_label <- paste(sep="", "NorMD modified dx (", signif(auc, 3), " auc)")
+
+out_file="predictions5.Rdata"
+p_5 <- pred
+l_5 <- leg_label
+
+dir.create(OUT_DIR, showWarnings=F)
+save(list=c(
+  "p_5",
+  "l_5"),
+  file=paste(OUT_DIR, out_file, sep="/"))

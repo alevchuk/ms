@@ -29,19 +29,23 @@ num_seq=$(wc -l $msa_tab | awk '{print $1}')
 mkdir -p $RAM_DIR 2> /dev/null && true
 
 out_dx1_file=$DATA_OUT/$canonical_name-normd-dx1-seq-scr
-#### out_dx2_file=$DATA_OUT/$canonical_name-normd-dx2-seq-scr 
-
+out_dx1_mod_file=$DATA_OUT/$canonical_name-normd-dx1-mod-seq-scr
+out_normd_file=$DATA_OUT/$canonical_name-normd-seq-scr
+out_normd_mod_file=$DATA_OUT/$canonical_name-normd-mod-seq-scr
 #out_seq_mod_scr_file=$DATA_OUT/$canonical_name-normdmod-seq-scr
 #out_seq_md_scr_file=$DATA_OUT/$canonical_name-md-seq-scr
 #out_seq_lqrid_scr_file=$DATA_OUT/$canonical_name-lqrid-seq-scr
 
 cat /dev/null > $out_dx1_file
-####cat /dev/null > $out_dx2_file
+cat /dev/null > $out_dx1_mod_file
+cat /dev/null > $out_normd_file
+cat /dev/null > $out_normd_mod_file
 #cat /dev/null > $out_seq_mod_scr_file
 #cat /dev/null > $out_seq_md_scr_file
 
 # Get the whole MSA score
 whole_score=$(cat $UPSTREAM_NORMD/$canonical_name-whole-msa-normd-scr)
+whole_score_mod=$(cat $UPSTREAM_NORMD/$canonical_name-whole-msa-normd-mod-scr)
 
 for seq_id in `seq 1 $num_seq`; do
   echo $seq_id
@@ -73,30 +77,30 @@ for seq_id in `seq 1 $num_seq`; do
 
 
   normd_dx1=$(ruby -e "puts $whole_score - $normd")
+  normd_dx1_mod=$(ruby -e "puts $whole_score_mod - ($md / $maxmd)")
+
+  #### This as well as the absolute $normd results in random guessing
+  modified_normd=$(ruby -e "puts $md / $maxmd")
 
   #### This does not make any differenece in the 0.904 ROC
   #normd_dx2=$(ruby -e "puts ($whole_score - $normd) / $whole_score")
 
-  #### This as well as the absolute $normd results in random guessing
-  #modified_normd=$(ruby -e "puts $md / $maxmd")
-
   echo -e "$seq_name\t$normd_dx1" >> $out_dx1_file
-  #echo -e "$seq_name\t$normd_dx2" >> $out_dx2_file
-  #echo -e "$seq_name\t-$modified_normd" >> $out_seq_mod_scr_file
+  echo -e "$seq_name\t$normd_dx1_mod" >> $out_dx1_mod_file
+  echo -e "$seq_name\t-$normd" >> $out_normd_file
+  echo -e "$seq_name\t-$modified_normd" >> $out_normd_mod_file
   #echo -e "$seq_name\t-$md" >> $out_seq_md_scr_file
   #echo -e "$seq_name\t-$lqrid" >> $out_seq_lqrid_scr_file
 
   rm $ram_file
 done
 
-sort -k2 $out_dx1_file         > $out_dx1_file-srt
-#sort -k2 $out_dx2_file         > $out_dx2_file-srt
-#sort -k2 $out_seq_mod_scr_file     > $out_seq_mod_scr_file-srt
-#sort -k2 $out_seq_md_scr_file      > $out_seq_md_scr_file-srt
-#sort -k2 $out_seq_lqrid_scr_file   > $out_seq_lqrid_scr_file-srt
+sort -k2 $out_dx1_file           > $out_dx1_file-srt
+sort -k2 $out_dx1_mod_file       > $out_dx1_mod_file-srt
+sort -k2 $out_normd_file         > $out_normd_file-srt
+sort -k2 $out_normd_mod_file     > $out_normd_mod_file-srt
 
-mv $out_dx1_file-srt        $out_dx1_file        
-#mv $out_dx2_file-srt        $out_dx2_file        
-#mv $out_seq_mod_scr_file-srt    $out_seq_mod_scr_file    
-#mv $out_seq_md_scr_file-srt     $out_seq_md_scr_file     
-#mv $out_seq_lqrid_scr_file-srt  $out_seq_lqrid_scr_file  
+mv $out_dx1_file-srt        $out_dx1_file
+mv $out_dx1_mod_file-srt    $out_dx1_mod_file
+mv $out_normd_file-srt      $out_normd_file
+mv $out_normd_mod_file-srt  $out_normd_mod_file
