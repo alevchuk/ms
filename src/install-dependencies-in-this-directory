@@ -3,8 +3,10 @@
 set -u
 set -e
 
+THIS_DIRECTORY="../opt/"
+
 tar zxvf misc-bioinfo-scripts.tar.gz 
-mv misc-bioinfo-scripts ../opt/ && true
+mv misc-bioinfo-scripts $THIS_DIRECTORY && true
 
 
 
@@ -12,8 +14,8 @@ tar xf guidance.v1.1.tgz
 cd guidance.v1.1
 make
 cd ..
-mv guidance.v1.1 ../opt/ && true
-chmod +x ../opt/guidance.v1.1/www/Guidance/guidance.pl
+mv guidance.v1.1 $THIS_DIRECTORY && true
+chmod +x $THIS_DIRECTORY/guidance.v1.1/www/Guidance/guidance.pl
 
 
 
@@ -22,7 +24,7 @@ cd mafft-6.857-with-extensions/core
 make clean
 cat Makefile | sed 's/#ENABLE_MULTITHREAD/ENABLE_MULTITHREAD/' > Makefile-new
 mv Makefile{-new,}
-cat Makefile | sed "s|PREFIX = .*|PREFIX = `pwd`/../../../opt/mafft-6.857-with-extensions|" > Makefile-new
+cat Makefile | sed "s|PREFIX = .*|PREFIX = `pwd`/../../$THIS_DIRECTORY/mafft-6.857-with-extensions|" > Makefile-new
 mv Makefile{-new,}
 make
 make install
@@ -30,6 +32,6 @@ cd ../..
 
 tar xf parallel-20110822.tar.bz2
 cd parallel-20110822
-./configure --prefix=`pwd`/../../opt/parallel-20110822 && \
+./configure --prefix=`pwd`/../$THIS_DIRECTORY/parallel-20110822 && \
   make && \
   make install
