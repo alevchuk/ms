@@ -1,0 +1,47 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+library(ggplot2)
+
+url = paste("http://biocluster.ucr.edu/~alevchuk/projects/032-ms",
+  "examples/trial-cdd-2011-08-v2.31-uniprot-2011-08/roc-best-normd-data.txt",
+  sep="/")
+scores <- read.table(url)
+scores$V1 <- NULL
+#scores <- cbind(scores, 1) #rep("Positive", length(scores)))
+scores <- cbind(scores, 'Positive')
+colnames(scores) <- c("Predicted", "Seq", "Actual")
+scores[,"Actual"] <- as.character(scores[,"Actual"])
+scores[grep("_RAND[0-9]", scores[,"Seq"]),"Actual"] <- "Negative"
+
+# Normalize to a 0 to 1 scale
+scores[,"Predicted"] <- scores[,"Predicted"] - min(scores[,"Predicted"])
+scores[,"Predicted"] <- scores[,"Predicted"] / max(scores[,"Predicted"])
+
+
+# pos/neg densities
+# This line originated from code by Harlan Harris https://gist.github.com/937821
+plot.densities <- ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
+  stat_density(alpha=.8, position='identity') +
+  scale_x_continuous('Cutoff', limits=c(0.9, 1),
+  labels=sprintf('%.1f %%', (0:40)*2.5),  breaks=(0:40)/40) +
+  scale_y_sqrt() 
+
+png("posneg.png", width=500, height=600, type="cairo")
+print(plot.densities)
+dev.off()
