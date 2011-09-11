@@ -67,7 +67,7 @@ do
           cat "$UPSTREAM_DIR/$sample/$file_name" |
             tr -d "-"  | # remove gaps
 	    awk '{print ">" $1 "\n" $2}' | # convert to fasta
-            cat > "$data_in_final-new/$file_name"
+            cat > "$data_in_final-new/$file_name-fasta.txt"
         done
       rm -rf $data_in_final
       mv $data_in_final{-new,}
@@ -87,7 +87,7 @@ mkdir -p $DATA_IN/tasks 2> /dev/null && true
 (cd $DATA_IN; echo sample-size$SAMPLE_SIZE-*-list-tab*-nogaps | tr " " "\n") |
 while read sample; do
   echo $sample
-  (cd $DATA_IN/$sample; echo *.FASTA.tab | tr " " "\n") |
+  (cd $DATA_IN/$sample; echo *.FASTA.tab-fasta.txt | tr " " "\n") |
   while read fasta_file; do
     out_sh="$DATA_IN/tasks/$sample-$fasta_file.sh"
     cat $GUIDANCE_RUN_TEMPLATE |
