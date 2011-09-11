@@ -1,0 +1,75 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Guidance build-in SEQ_RES_PAIR score
+GUIDANCE_ROC <- paste("trial-cdd-2011-08-v2.31-uniprot-2011-08",
+"071-build-roc-classifer-data-out/predictions1.Rdata", sep="/")
+
+# NorMD modified change ratio variant
+NORMD_ROC <- paste("trial-cdd-2011-08-v2.31-uniprot-2011-08",
+"071-build-roc-classifer-data-out/predictions5.Rdata", sep="/")
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, "is a utility for MSA alignment cleanup", "\n\n"))
+  cat(paste("Usage:", script_name, "<method> <e-mode> <in-msa>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <method>  Scoring method. Must be: \"guidance\" or \"normd\"",
+    "  <e-mode>  Expected true keeps and removals.",
+    "            Must be: \"keep.95tp\" or \"remove.95tn\"",
+    "  <in-msa>  Input multiple sequence alignment in FASTA format.",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 3) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+method    <- script_args[[1]]
+mode      <- script_args[[2]]
+msa_fasta <- script_args[[3]]
+
+# Check arguments
+if (method != "guidance" && method != "normd") {
+  cat("ERROR: Method must be \"guidance\" or \"normd\", got \"",
+    method, "\"\n\n", sep="")
+  usage_and_quit()
+}
+if (mode != "keep.95tp" && mode != "remove.95tn") {
+  cat("ERROR: Method must be \"keep.95tp\" or \"remove.95tn\", got \"",
+    mode, "\"\n\n", sep="")
+  usage_and_quit()
+}
+
