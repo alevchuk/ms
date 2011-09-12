@@ -30,15 +30,16 @@ if [ $# != 1 ] && [ $# != 2 ]; then
 fi
 
 # Arguments
+w
 SAMPLE_SIZE=$1                              # sample size (mandatory)
-set +u
+set +u
 [ "$2" == '-f' ] && export ALWAYS_RUN=true  # skip steps (optional)
 [ -n "$2" ] && [ "$2" != '-f' ] && (echo "Invalid option $3"; exit 1)
 set -u
 
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
-UPSTREAM_DIR="./$EXPERIMENT_NAME/027-normd-data-out"
+UPSTREAM_DIR="./$EXPERIMENT_NAME/027-run-normd-with-removals-data-out"
 
 DATA_OUT="$EXPERIMENT_NAME/$0-data-out/sample-size$SAMPLE_SIZE"
 mkdir -p $DATA_OUT-new 2> /dev/null && true
