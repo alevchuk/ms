@@ -43,6 +43,8 @@ EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 UPSTREAM_DIR="./$EXPERIMENT_NAME/010-run-guidance-data-out"
 
 DATA_OUT="$EXPERIMENT_NAME/$0-data-out/sample-size$SAMPLE_SIZE"
+
+rm -rf $DATA_OUT-new # Danger Zone
 mkdir -p $DATA_OUT-new 2> /dev/null && true
 
 
@@ -124,7 +126,7 @@ function callback {
   # Danger Zone
   rm -rf $DATA_OUT
   
-  # Done
+  # Commit
   mv $DATA_OUT{-new,}
 }
 
