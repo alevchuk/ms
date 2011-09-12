@@ -15,11 +15,11 @@ OUT_DIR <- paste(EXPERIMENT_NAME, "071-plot-roc-out", sep="/")
 library(ROCR)
 dir.create(OUT_DIR, showWarnings=F)
 
-load(paste(UPSTREAM_DIR, "predictions1.Rdata", sep="/"))
-load(paste(UPSTREAM_DIR, "predictions2.Rdata", sep="/"))
-load(paste(UPSTREAM_DIR, "predictions3.Rdata", sep="/"))
-load(paste(UPSTREAM_DIR, "predictions4.Rdata", sep="/"))
-load(paste(UPSTREAM_DIR, "predictions5.Rdata", sep="/"))
+load(paste(UPSTREAM_DIR, "predictions-guidance.Rdata"    , sep="/"))
+load(paste(UPSTREAM_DIR, "predictions-normd-mod.Rdata"   , sep="/"))
+load(paste(UPSTREAM_DIR, "predictions-normd-dx.Rdata"    , sep="/"))
+load(paste(UPSTREAM_DIR, "predictions-normd-simple.Rdata", sep="/"))
+load(paste(UPSTREAM_DIR, "predictions-normd-mod-dx.Rdata", sep="/"))
 
 w_1 <-  4; c_1 <- 2;
 w_2 <- 16; c_2 <- 9;
@@ -29,7 +29,7 @@ w_5 <-  2; c_5 <- 4;
 
 
 png(paste(OUT_DIR, "roc.png", sep="/"),
-   width = 600, height = 600, units = "px", type="cairo")
+   width = 750, height = 750, units = "px", type="cairo")
 
 par(mar=c(5, 5, 2, 2))
 par(cex.lab=2, cex.axis=1.5, font.main=12)

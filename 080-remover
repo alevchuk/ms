@@ -17,6 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+# To run Bash commands
+SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
 # Name of this script
 script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
 script_path_list <- strsplit(script_path, '/')[[1]]
@@ -26,13 +29,25 @@ script_name <- script_path_list[[length(script_path_list)]]
 script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
 script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 
+# Scoring utilities
+GUIDANCE_EXEC <- paste(script_dir,
+  "opt/guidance.v1.1/www/Guidance/guidance.pl", sep="/")
+MAFFT_PATH <- paste(script_dir,
+  "opt/mafft-6.857-with-extensions/bin", sep="/")
+NORMD_PER_SEQUENCE <- paste(script_dir,
+  "080-remover-scripts/normd-per-sequence.sh", sep="/")
+
+# Data formatting utilities
+CONVERT_FASTA_TO_TAB <- paste(script_dir,
+  "opt/misc-bioinfo-scripts/convert-fasta-to-tab", sep="/")
+
 # Guidance build-in SEQ_RES_PAIR score
 GUIDANCE_ROCR <- paste(script_dir, "trial-cdd-2011-08-v2.31-uniprot-2011-08",
-"070-build-roc-classifer-data-out/predictions1.Rdata", sep="/")
+"070-build-roc-classifer-data-out/predictions-guidance.Rdata", sep="/")
 
 # NorMD modified change ratio variant
-NORMD_ROCR <- paste(script_dir, "trial-cdd-2011-08-v2.31-uniprot-2011-08",
-"070-build-roc-classifer-data-out/predictions5.Rdata", sep="/")
+NORMD_DXMOD_ROCR <- paste(script_dir, "trial-cdd-2011-08-v2.31-uniprot-2011-08",
+"070-build-roc-classifer-data-out/predictions-normd-mod-dx.Rdata", sep="/")
 
 # How to use this script
 usage_and_quit <- function() {
@@ -40,10 +55,10 @@ usage_and_quit <- function() {
   cat(paste("Usage:", script_name, "<method> <e-mode> <in-msa>", "\n\n"))
   cat(paste(
     "Required Arguments",
-    "  <method>  Scoring method. Must be: \"guidance\" or \"normd\"",
+    "  <method>  Scoring method. Must be: \"guidance\" or \"normd_dxmod\"",
     "  <e-mode>  Expected true keeps and removals.",
-    "            Must be: \"keep.95tpr\" or \"remove.95tnr\"",
-    "  <in-msa>  Input multiple sequence alignment in FASTA format.",
+    "            Must be: \"keep.98tpr\" or \"remove.95tnr\"",
+    "  <in-msa>  Input multiple sequence alignment in TAB or FASTA format.",
     "",
     sep="\n"))
   quit()
@@ -58,29 +73,29 @@ if(length(script_args) != 3) {
 }
 
 # Get arguments
-scoring_method  <- script_args[[1]]
+SCORING_METHOD  <- script_args[[1]]
 mode <- script_args[[2]]
-msa_fasta <- script_args[[3]]
+MSA_FASTA <- script_args[[3]]
 
 # Check arguments
-if (scoring_method != "guidance" && scoring_method != "normd") {
-  cat("ERROR: Method must be \"guidance\" or \"normd\", got \"",
-    scoring_method, "\"\n\n", sep="")
+if (SCORING_METHOD != "guidance" && SCORING_METHOD != "normd_dxmod") {
+  cat("ERROR: Method must be \"guidance\" or \"normd_dxmod\", got \"",
+    SCORING_METHOD, "\"\n\n", sep="")
   usage_and_quit()
 }
-if (mode != "keep.95tpr" && mode != "remove.95tnr") {
-  cat("ERROR: Method must be \"keep.95tp\" or \"remove.95tn\", got \"",
+if (mode != "keep.98tpr" && mode != "remove.95tnr") {
+  cat("ERROR: Method must be \"keep.98tp\" or \"remove.95tn\", got \"",
     mode, "\"\n\n", sep="")
   usage_and_quit()
 }
 
 # Load the ROCR object which contains previous data analysis
 library(ROCR)
-if (scoring_method == "guidance") {
+if (SCORING_METHOD == "guidance") {
   load(GUIDANCE_ROCR)
   ROCR_PRED <- p_1
-} else if (scoring_method == "normd") {
-  load(NORMD_ROCR)
+} else if (SCORING_METHOD == "normd_dxmod") {
+  load(NORMD_DXMOD_ROCR)
   ROCR_PRED <- p_5
 }
 
@@ -141,9 +156,10 @@ if (paste(tpr_cutoffs, collapse="") != paste(fpr_cutoffs, collapse="")) {
   cat("ERROR: Assertion that tpr_cutoffs == fpr_cutoffs failed!")
   quit()
 }
+CUTOFF_LIST <- tpr_cutoffs
 
-if (mode == "keep.95tpr") {
-  offsets <- tpr_values - .95 # Note: they remain sorted
+if (mode == "keep.98tpr") {
+  offsets <- tpr_values - .98 # Note: they remain sorted
 
   # Implies that I'm looking for the first value greater than .95
   CUTOFF_LOCATION <- which(offsets > 0)[[1]]
@@ -160,15 +176,115 @@ if (mode == "remove.95tnr") {
 
 TPR <<- tpr_values[[CUTOFF_LOCATION]]
 FPR <<- fpr_values[[CUTOFF_LOCATION]]
-CUTOFF <<- tpr_cutoffs[[CUTOFF_LOCATION]]
+
+CUTOFF <- CUTOFF_LIST[[CUTOFF_LOCATION]]
+cat("MSA ", SCORING_METHOD, " score cutoff:\t", CUTOFF, "\n", sep="")
+
+cat("+-------------------------------------------------------+\n")
+cat("| TPR = True positive rate  = Sensitivity     = 1 - FNR |\n")
+cat("| TNR = True negative rate  = Specificity     = 1 - FPR |\n")
+cat("| FPR = False positive rate = 1 - Specificity = 1 - TNR |\n")
+cat("| FNR = False negative rate = 1 - Sensitivity = 1 - TPR |\n")
+cat("+-------------------------------------------------------+\n")
+cat("Expected TPR:\t", signif(TPR, 4), "\n", sep="")
+cat("Expected TNR:\t", signif(1 - FPR, 4), "\n", sep="")
+cat("Expected FPR:\t", signif(FPR, 4), "\n", sep="")
+cat("Expected FNR:\t", signif(1 - TPR, 4), "\n", sep="")
+cat("The above expectations will hold under the follwoing conditions:\n",
+  "\n",
+  "  1. Close to 95% of the sequences of the input MSA are \n",
+  "     one of the protein groups of CDD v2.31 (2011-08)\n",
+  "\n",
+  "  2. Close to 5% of the sequences in the input MSA are\n",
+  "     randomly sampled from Uniprot v2011_08\n",
+  "\n",
+  "  3. The lengths of all sequences in Condition #2 are equial to\n",
+  "     the average length of the sequence group in Condition #1\n\n")
+cat("\n")
 
 
-cat("TPR = True positive rate = Sensitivity = Kept seqs / Related seqs\n")
-cat("TNR = True negative rate = Specificity = Removed seqs / Unrelated seqs\n")
-cat("FPR = False positive rate = 1 - Specificity\n")
-cat("FNR = False negative rate = 1 - Sensitivity\n")
-cat("Expected TPR:\t", TPR, "\n", sep="")
-cat("Expected TNR:\t", 1 - FPR, "\n", sep="")
-cat("Expected FPR:\t", FPR, "\n", sep="")
-cat("Expected FNR:\t", 1 - TPR, "\n", sep="")
-cat("MSA score cutoff:\t", CUTOFF, "\n", sep="")
+OUT_DIR <- paste(MSA_FASTA, "-remover", sep="")
+dir.create(OUT_DIR, showWarnings=F)
+
+
+
+cat("Re-shaping input MSA data format...\n")
+PREPARED_FASTA_FILE_INPUT <- 
+  paste(OUT_DIR, "/msa-fasta-tab-nogaps-fasta.txt", sep="")
+
+if (ncol(read.table(MSA_FASTA, sep="\t")) == 2) { # fasta-TAB format detection
+  SH(paste("cp ", MSA_FASTA, " ", 
+    OUT_DIR, "/msa-fasta-tab.txt && echo 'Convert to tab Skipped'", sep=""))
+} else {
+  SH(paste("cat ", MSA_FASTA, " | ", CONVERT_FASTA_TO_TAB, " >",
+    OUT_DIR, "/msa-fasta-tab.txt && echo 'Convert to tab OK'", sep=""))
+}
+SH(paste("cat ", OUT_DIR, "/msa-fasta-tab.txt | tr -d '-' >",
+  OUT_DIR, "/msa-fasta-tab-nogaps.txt && echo 'Remove gaps OK'", sep=""))
+SH(paste("cat ", OUT_DIR, "/msa-fasta-tab-nogaps.txt | ",
+  "awk '{print \">\" $1 \"\\n\" $2}' >", PREPARED_FASTA_FILE_INPUT,
+  " && echo 'Convert back to fasta OK'",
+  sep=""))
+cat("\n")
+
+
+
+cat("Aligning and scoring...\n")
+if (SCORING_METHOD == "guidance") {
+  GUIDANCE_RESULTS_DIR <- paste(OUT_DIR, "/guidance", sep="")
+  cmd <- paste(
+    "done_time=", GUIDANCE_RESULTS_DIR, "-done\n",
+    "if [ ! -f $done_time ] || [ ", MSA_FASTA, " -nt $done_time ] ",
+    " || [ ", script_path, " -nt $done_time ] ",
+    " || [ ", NORMD_PER_SEQUENCE, " -nt $done_time ] ; then\n",
+    "  export PATH=", MAFFT_PATH, ":$PATH\n",
+    "  ", GUIDANCE_EXEC, " --msaProgram MAFFT --seqType aa",
+    " --seqFile ", PREPARED_FASTA_FILE_INPUT,
+    " --outDir ", GUIDANCE_RESULTS_DIR, 
+    " && touch ", GUIDANCE_RESULTS_DIR, "-done",
+    " && echo 'GUIDANCE finished'\n",
+    "else\n", 
+    "  echo 'Already done.'\n",
+    "fi\n",
+    sep="")
+  SH(cmd)
+
+  SEQ_SCORES <- paste(GUIDANCE_RESULTS_DIR,
+    "/MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names", sep="")
+  SCORES <- read.table(SEQ_SCORES, header=T)
+  # ALREADY AS HEADER #colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
+
+
+} else if (SCORING_METHOD == "normd_dxmod") {
+  NORMD_RESULTS <- paste(OUT_DIR, "/normd-dx1-mod-seq-scores.txt", sep="")
+  cmd <- paste(
+    "set -e\n",
+    "set -u\n",
+
+    "done_time=", NORMD_RESULTS, "-done\n",
+
+    "if [ ! -f $done_time ] || [ ", MSA_FASTA, " -nt $done_time ] ",
+    " || [ ", script_path, " -nt $done_time ] ",
+    " || [ ", NORMD_PER_SEQUENCE, " -nt $done_time ] ; then\n",
+    "  ", NORMD_PER_SEQUENCE, " ", script_dir, "/opt/ ", OUT_DIR,
+    "  && ",
+    "  touch ", NORMD_RESULTS, "-done && echo 'NORMD finished'\n",
+
+    "else\n", 
+    "  echo 'Already done.'\n",
+
+    "fi\n",
+    sep="")
+  print(SH(cmd))
+
+  SCORES <- read.table(NORMD_RESULTS)
+  colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
+}
+cat("\n")
+
+cat("Removing badly aligned or unrelated sequences...\n")
+BAD_SEQUENCES <- which(SCORES[, 'SEQUENCE_SCORE'] < CUTOFF)
+
+ORIG_MSA <-
+  read.table(paste(OUT_DIR, "/msa-fasta-tab.txt", sep=""))
+cat("Number of sequences removed:\t", length(BAD_SEQUENCES), "\n", sep="")
