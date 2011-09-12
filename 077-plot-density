@@ -23,7 +23,6 @@ url = paste("http://biocluster.ucr.edu/~alevchuk/projects/032-ms",
   sep="/")
 scores <- read.table(url)
 scores$V1 <- NULL
-#scores <- cbind(scores, 1) #rep("Positive", length(scores)))
 scores <- cbind(scores, 'Positive')
 colnames(scores) <- c("Predicted", "Seq", "Actual")
 scores[,"Actual"] <- as.character(scores[,"Actual"])
@@ -40,7 +39,7 @@ plot.densities <- ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
   stat_density(alpha=.8, position='identity') +
   scale_x_continuous('Cutoff', limits=c(0.9, 1),
   labels=sprintf('%.1f %%', (0:40)*2.5),  breaks=(0:40)/40) +
-  scale_y_sqrt() 
+  scale_y_sqrt('', labels=c('0'), breaks=c(0)) 
 
 png("posneg.png", width=500, height=600, type="cairo")
 print(plot.densities)
