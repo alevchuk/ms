@@ -117,7 +117,13 @@ function callback {
     
     #$MAX_MSA_NUMSEQ \
 
+  # Commit
   mv $DATA_OUT/msa-list-filtered{-new,}
+
+  # Cleanup (all of this info is already in msa-list-filtered
+  rm $DATA_OUT/msa-sizes-length-trimmed 
+  rm $DATA_OUT/msa-sizes-length
+  rm $DATA_OUT/msa-sizes-numseq
 }
 upstream_done_time_prefix=$done_time_prefix
 done_time_prefix=$DATA_OUT/msa-list-filtered
