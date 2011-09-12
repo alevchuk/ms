@@ -33,7 +33,7 @@ DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
 
-ls $UPSTREAM/sample-size100-id1-list-tab-rand0.05-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
+ls $UPSTREAM/sample-size100-id*-list-tab-rand*-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
   canonical_name=$(echo "$msa_fasta" | awk -F/ '{print $4 "-" $5}')
 
   out_sh="$DATA_IN/$canonical_name.sh"

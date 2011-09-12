@@ -19,8 +19,6 @@ SCORING_MATRIX="./opt/norMD1_3/gon250.bla"
 NORMD_OPTS="$SCORING_MATRIX 0 0 0 -v"
 
 cd $working_d
-msa_tab=$msa_fasta-tab
-num_seq=$(wc -l $msa_tab | awk '{print $1}')
 
 out_normd_file=$DATA_OUT/$canonical_name-whole-msa-normd-scr
 out_normd_mod_file=$DATA_OUT/$canonical_name-whole-msa-normd-mod-scr
