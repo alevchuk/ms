@@ -264,8 +264,6 @@ if (SCORING_METHOD == "guidance") {
   SEQ_SCORES <- paste(GUIDANCE_RESULTS_DIR,
     "/MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names", sep="")
   SCORES <- read.table(SEQ_SCORES, header=T)
-  print(str(SCORES))
-  quit()
   # ALREADY AS HEADER #colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
 
 
