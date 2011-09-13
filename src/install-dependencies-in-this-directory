@@ -8,7 +8,9 @@ THIS_DIRECTORY="../opt/"
 tar zxvf misc-bioinfo-scripts.tar.gz 
 mv misc-bioinfo-scripts $THIS_DIRECTORY && true
 
-
+tar xf norMD1_3.tar.gz
+mv normd_noexpat ../opt/norMD1_3
+(cd ../opt/norMD1_3; make)
 
 tar xf guidance.v1.1.tgz
 cd guidance.v1.1
