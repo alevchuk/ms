@@ -193,7 +193,7 @@ cat("Expected FNR:\t", signif(1 - TPR, 4), "\n", sep="")
 cat("The above expectations will hold under the follwoing conditions:\n",
   "\n",
   "  1. Close to 95% of the sequences of the input MSA are \n",
-  "     one of the protein groups of CDD v2.31 (2011-08)\n",
+  "     one of the protein groups randomly sampled from CDD v2.31 (2011-08)\n",
   "\n",
   "  2. Close to 5% of the sequences in the input MSA are\n",
   "     randomly sampled from Uniprot v2011_08\n",
