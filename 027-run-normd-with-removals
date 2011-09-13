@@ -38,13 +38,13 @@ RAM_DIR=/dev/shm/$EXPERIMENT_NAME-normd-scr
 
 
 
-mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
+rm -rf $DATA_IN-new
+mkdir -p $DATA_IN-new $DATA_OUT 2> /dev/null && true
 
-
-ls $UPSTREAM_MSA/sample-size100-id1-list-tab-rand0.05-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
+ls $UPSTREAM_MSA/sample-size100-id*-list-tab-rand*-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
   canonical_name=$(echo "$msa_fasta" | awk -F/ '{print $4 "-" $5}')
 
-  out_sh="$DATA_IN/$canonical_name.sh"
+  out_sh="$DATA_IN-new/$canonical_name.sh"
   cat $NORMD_RUN_TEMPLATE |
     sed "s|%%RAM_DIR%%|$RAM_DIR|g" |
     sed "s|%%UPSTREAM_NORMD%%|$UPSTREAM_NORMD|g" |
@@ -56,3 +56,6 @@ ls $UPSTREAM_MSA/sample-size100-id1-list-tab-rand0.05-tab-nogaps/*.FASTA.tab/MSA
     chmod +x $out_sh
 
 done
+
+rm -rf $DATA_IN # Danger Zone
+mv $DATA_IN{-new,}

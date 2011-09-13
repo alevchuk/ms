@@ -21,49 +21,90 @@ library(ggplot2)
 sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+UPSTREAM <- paste(EXPERIMENT_NAME,
+  "/014-get-guidance-scores-data-out/sample-size100", sep="")
+UPSTREAM2 <- paste(EXPERIMENT_NAME,
+  "/028-get-normd-scores-data-out/sample-size100", sep="")
 
 OUT_DIR <- paste(EXPERIMENT_NAME, "077-plot-density-data-out", sep="/")
 
-
 SAMPLE_SIZE <- 100
 SAMPLES <- c(1,2,3,4,5)
-RANDS <- c("0.05","0.1","0.15","0.2","0.25","0.3","0.35","0.4","0.45","0.50")
+RANDS <-
+  c("0.00", "0.05","0.10","0.15","0.20","0.25",
+    "0.30","0.35","0.40","0.45","0.50")
 
-for (s_id in SAMPLES) {
-  for (r in RANDS) {
+for (method in c("guidance", "normd")) {
+  for (s_id in SAMPLES) {
+    for (r in RANDS) {
+      if (method == "guidance") {
+        if (r == "0.00") {
+          scores_file <- paste(UPSTREAM, "/sample-size", SAMPLE_SIZE, "-id",
+            s_id, "-list-tab-nogaps-mafft-guidance-seq-scr", sep="")
+        } else {
+          scores_file <- paste(UPSTREAM, "/sample-size", SAMPLE_SIZE, "-id",
+            s_id, "-list-tab-rand", r, "-tab-nogaps-mafft-guidance-seq-scr",
+            sep="")
+        }
+      } else {
+        if (r == "0.00") {
+          scores_file <- "not-for-normd-yet"
+        } else {
+          scores_file <- paste(UPSTREAM2, "/sample-size", SAMPLE_SIZE, "-id",
+            s_id, "-list-tab-rand", r, "-tab-normd-dx-mod-scr", sep="")
+        }
+#trial-cdd-2011-08-v2.31-uniprot-2011-08/028-get-normd-scores-data-out/sample-size100/sample-size100-id1-list-tab-rand0.05-tab-normd-dx-mod-scr
+      }
+  
+      if (!file.exists(scores_file)) {
+        cat("WARNING: File does not exist: ", scores_file, "\n")
+        next
+      }
+  
+      scores <- read.table(scores_file)
+      
+      scores <- cbind(scores, 'Positive')
+      colnames(scores) <- c("Predicted", "Seq", "MSA", "Actual")
+      
+      scores[,"Actual"] <- as.character(scores[,"Actual"])
+      scores[grep("_RAND[0-9]", scores[,"Seq"]),"Actual"] <- "Negative"
+  
+      
+      
+      ### Normalize to a 0 to 1 scale
+      ##scores[,"Predicted"] <- scores[,"Predicted"] - min(scores[,"Predicted"])
+      ##scores[,"Predicted"] <- scores[,"Predicted"] / max(scores[,"Predicted"])
+  
+      ### Cut out some outliers - otherwise they will messup the scale and
+      ### nothing will be visible on the plot
+      s1 <- scores[,"Predicted"]
+      c1 <- quantile(s1,0.25) - (IQR(s1) * 100) # Carefult with this
+      c2 <- quantile(s1,0.75) + (IQR(s1) * 100) # Somethimes it cuts too much
+      scores <- scores[scores[,"Predicted"] > c1,]
+      scores <- scores[scores[,"Predicted"] < c2,]
 
-    scores <- read.table(paste(EXPERIMENT_NAME,
-      "/014-get-guidance-scores-data-out/sample-size100-new/sample-size",
-      SAMPLE_SIZE, "-id",
-      s_id, "-list-tab-rand", r, "-tab-nogaps-mafft-guidance-seq-scr", sep=""))
-    
-    scores <- cbind(scores, 'Positive')
-    colnames(scores) <- c("Predicted", "Seq", "MSA", "Actual")
-    
-    scores[,"Actual"] <- as.character(scores[,"Actual"])
-    scores[grep("_RAND[0-9]", scores[,"Seq"]),"Actual"] <- "Negative"
-    
-    ### Normalize to a 0 to 1 scale
-    ##scores[,"Predicted"] <- scores[,"Predicted"] - min(scores[,"Predicted"])
-    ##scores[,"Predicted"] <- scores[,"Predicted"] / max(scores[,"Predicted"])
-    
-    
-    # pos/neg densities
-    # This line originated from Harlan Harris https://gist.github.com/937821
-    plot.densities <- ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
-      stat_density(alpha=.8, position='identity') +
-      scale_x_continuous('Score'
-      # , labels=sprintf('%.1f %%', (0:5)*20),  breaks=(0:5)/5 +
-      ) + scale_y_sqrt('Density', labels=c('0'), breaks=c(0)) 
-    
-    dir.create(OUT_DIR, showWarnings=F) 
-    png(paste(OUT_DIR, 
-      "/posneg-density-sample-size", SAMPLE_SIZE, "-id", s_id, "-rand", r,
-      "guidance.png",
-      sep=""), width=400, height=400, type="cairo")
 
-    print(plot.densities)
-    dev.off()
-
+      # Stabilize colors so that Positive is read and Negative is Blue 
+      scores[,"Actual"] <- factor(scores[,"Actual"],
+        levels = c("Positive", "Negative"))
+  
+      
+      # pos/neg densities
+      # This line originated from Harlan Harris https://gist.github.com/937821
+      plot.densities <- ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
+        stat_density(alpha=.8, position='identity') +
+        scale_x_continuous('Score'
+        # , labels=sprintf('%.1f %%', (0:5)*20),  breaks=(0:5)/5 +
+        ) + scale_y_sqrt('Density', labels=c('0'), breaks=c(0)) 
+      
+      dir.create(OUT_DIR, showWarnings=F) 
+      png(paste(OUT_DIR, 
+        "/posneg-density-sample-size", SAMPLE_SIZE, "-id", s_id, "-rand", r,
+        "-", method, ".png", sep=""), width=400, height=400, type="cairo")
+  
+      print(plot.densities)
+      dev.off()
+  
+    }
   }
 }

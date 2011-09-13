@@ -45,9 +45,9 @@ set -u
 
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
-UPSTREAM_DIR="./$EXPERIMENT_NAME/010-run-guidance-data-out/sample-size100-id1-list-tab-rand0.05-tab-nogaps"
+UPSTREAM_DIR="./$EXPERIMENT_NAME/010-run-guidance-data-out/sample-size$SAMPLE_SIZE-id*-list-tab-rand*-tab-nogaps"
 
-ls -d "$UPSTREAM_DIR/"*.tab | while read guidance_out_dir; do
+ls -d $UPSTREAM_DIR/*.tab | while read guidance_out_dir; do
   cat $guidance_out_dir/MSA.MAFFT.aln.With_Names | $CONVERT_FASTA_TO_TAB \
     > $guidance_out_dir/MSA.MAFFT.aln.With_Names-tab
 done
