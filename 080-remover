@@ -57,7 +57,7 @@ usage_and_quit <- function() {
     "Required Arguments",
     "  <method>  Scoring method. Must be: \"guidance\" or \"normd_dxmod\"",
     "  <e-mode>  Expected true keeps and removals.",
-    "            Must be: \"keep.98tpr\" or \"remove.95tnr\"",
+    "            Must be: \"keep.99tpr\" or \"remove.99tnr\"",
     "  <in-msa>  Input multiple sequence alignment in TAB or FASTA format.",
     "",
     sep="\n"))
@@ -74,7 +74,7 @@ if(length(script_args) != 3) {
 
 # Get arguments
 SCORING_METHOD  <- script_args[[1]]
-mode <- script_args[[2]]
+MODE <- script_args[[2]]
 MSA_FASTA <- script_args[[3]]
 
 # Check arguments
@@ -83,9 +83,9 @@ if (SCORING_METHOD != "guidance" && SCORING_METHOD != "normd_dxmod") {
     SCORING_METHOD, "\"\n\n", sep="")
   usage_and_quit()
 }
-if (mode != "keep.98tpr" && mode != "remove.95tnr") {
-  cat("ERROR: Method must be \"keep.98tp\" or \"remove.95tn\", got \"",
-    mode, "\"\n\n", sep="")
+if (MODE != "keep.99tpr" && MODE != "remove.99tnr") {
+  cat("ERROR: Method must be \"keep.99tp\" or \"remove.99tn\", got \"",
+    MODE, "\"\n\n", sep="")
   usage_and_quit()
 }
 
@@ -158,18 +158,18 @@ if (paste(tpr_cutoffs, collapse="") != paste(fpr_cutoffs, collapse="")) {
 }
 CUTOFF_LIST <- tpr_cutoffs
 
-if (mode == "keep.98tpr") {
-  offsets <- tpr_values - .98 # Note: they remain sorted
+if (MODE == "keep.99tpr") {
+  offsets <- tpr_values - .99 # Note: they remain sorted
 
-  # Implies that I'm looking for the first value greater than .95
+  # Implies that I'm looking for the first value greater than .99
   CUTOFF_LOCATION <- which(offsets > 0)[[1]]
 }
-if (mode == "remove.95tnr") {
+if (MODE == "remove.99tnr") {
   # TNR = Specificity = 1 - FPR
   tnr_values <- 1 - fpr_values
-  offsets <- tnr_values - .95
+  offsets <- tnr_values - .99
 
-  # Implies that I'm looking for the first value less than .95
+  # Implies that I'm looking for the first value less than .99
   positive_offsets <- which(offsets > 0)
   CUTOFF_LOCATION <- positive_offsets[length(positive_offsets)]
 }
@@ -277,14 +277,22 @@ if (SCORING_METHOD == "guidance") {
     sep="")
   print(SH(cmd))
 
-  SCORES <- read.table(NORMD_RESULTS)
-  colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
-}
-cat("\n")
+   SCORES <- read.table(NORMD_RESULTS)
+   colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
+ }
+ cat("\n")
+ 
+ cat("Removing badly aligned or unrelated sequences...\n")
+ BAD_SEQUENCES <- which(SCORES[, 'SEQUENCE_SCORE'] < CUTOFF)
 
-cat("Removing badly aligned or unrelated sequences...\n")
-BAD_SEQUENCES <- which(SCORES[, 'SEQUENCE_SCORE'] < CUTOFF)
+SCORES[,'REMOVE?'] <- 'Keep'
+SCORES[BAD_SEQUENCES,'REMOVE?'] <- 'Remove'
 
-ORIG_MSA <-
-  read.table(paste(OUT_DIR, "/msa-fasta-tab.txt", sep=""))
+results <- SCORES[rev(order(SCORES[,'SEQUENCE_SCORE'])),]
+results_file <-
+  paste(OUT_DIR, "/results-", SCORING_METHOD, "-", MODE, ".txt", sep="")
+
+write.table(file=results_file, results, sep="\t")
+print(results)
+
 cat("Number of sequences removed:\t", length(BAD_SEQUENCES), "\n", sep="")
