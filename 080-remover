@@ -55,7 +55,7 @@ usage_and_quit <- function() {
   cat(paste("Usage:", script_name, "<method> <e-mode> <in-msa>", "\n\n"))
   cat(paste(
     "Required Arguments",
-    "  <method>  Scoring method. Must be: \"guidance\" or \"normd_dxmod\"",
+    "  <method>  Scoring method. Must be: \"guidance\", \"normd_dxmod\", or \"best\"",
     "  <e-mode>  Expected true keeps and removals.",
     "            Must be: \"keep.99tpr\" or \"remove.99tnr\"",
     "  <in-msa>  Input multiple sequence alignment in TAB or FASTA format.",
@@ -78,8 +78,8 @@ MODE <- script_args[[2]]
 MSA_FASTA <- script_args[[3]]
 
 # Check arguments
-if (SCORING_METHOD != "guidance" && SCORING_METHOD != "normd_dxmod") {
-  cat("ERROR: Method must be \"guidance\" or \"normd_dxmod\", got \"",
+if (SCORING_METHOD != "guidance" && SCORING_METHOD != "normd_dxmod" && SCORING_METHOD != "best") {
+  cat("ERROR: Method must be \"guidance\", \"normd_dxmod\", or \"best\" got \"",
     SCORING_METHOD, "\"\n\n", sep="")
   usage_and_quit()
 }
@@ -91,12 +91,24 @@ if (MODE != "keep.99tpr" && MODE != "remove.99tnr") {
 
 # Load the ROCR object which contains previous data analysis
 library(ROCR)
+
+OUT_AS_METHOD = SCORING_METHOD
+if (SCORING_METHOD == "best") {
+  OUT_AS_METHOD = "best"
+  if (MODE == "keep.99tpr") {
+    SCORING_METHOD = "normd_dxmod"
+  } else {
+    SCORING_METHOD = "guidance"
+  }
+}
+
 if (SCORING_METHOD == "guidance") {
   load(GUIDANCE_ROCR)
   ROCR_PRED <- p_1
 } else if (SCORING_METHOD == "normd_dxmod") {
   load(NORMD_DXMOD_ROCR)
   ROCR_PRED <- p_5
+
 }
 
 
@@ -252,6 +264,8 @@ if (SCORING_METHOD == "guidance") {
   SEQ_SCORES <- paste(GUIDANCE_RESULTS_DIR,
     "/MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names", sep="")
   SCORES <- read.table(SEQ_SCORES, header=T)
+  print(str(SCORES))
+  quit()
   # ALREADY AS HEADER #colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
 
 
@@ -290,7 +304,7 @@ SCORES[BAD_SEQUENCES,'REMOVE?'] <- 'Remove'
 
 results <- SCORES[rev(order(SCORES[,'SEQUENCE_SCORE'])),]
 results_file <-
-  paste(OUT_DIR, "/results-", SCORING_METHOD, "-", MODE, ".txt", sep="")
+  paste(OUT_DIR, "/results-", OUT_AS_METHOD, "-", MODE, ".txt", sep="")
 
 write.table(file=results_file, results, sep="\t")
 print(results)
