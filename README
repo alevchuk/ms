@@ -20,3 +20,29 @@ Tested on:
 
 Contact:
   Aleksandr Levchuk <alecvhuk@gmail.com>
+
+Installing:
+  make
+
+  One command. Should take about 4 minutes. Installs everithing is ms/opt -
+  the local project directory.
+
+Running the MSA cleanup utility:
+  You can use the classifier right away. Simply run the ./008-remover
+  and it will print out the usage help.
+
+Running the complete experiment:
+  Data, with the exception of the classifier, is not included. Follow 
+  data/DATA_README for instruction on downloading versions of CDD and Uniprot.
+
+  Once data tar.gz are downloaded, run each command manually:
+  002-start, 004-reshape-cdd, 006-reshape-uniprot, 008-sample, ...
+
+  006-reshape-uniprot is by far the most time consuming, it converts
+  FASTA to TAB and takes 7.6 hours. 009-add-random can take about 1 hour.
+  Some steps will need to know what sample size you what to operate on.
+
+Contributing:
+  This code is GPLv3. Free Software. So please don't hesitate to make a fork
+  on GitHub, make changes, and send GitHub Pull Requests. I will gladly
+  accept any revisions and will cite you (the author) as you prefer.
