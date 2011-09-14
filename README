@@ -58,3 +58,8 @@ Contributing:
   This code is GPLv3. Free Software. So please don't hesitate to make a fork
   on GitHub, make changes, and send GitHub Pull Requests. I will gladly
   accept any revisions and will cite you (the author) as you prefer.
+
+Pipeline API:
+  Almost all scripts use ./api/pipeline.sh a very small script to help avoid
+  repeating some fine-granularity operations, useful is you forget which
+  operations already completed and if some cluster jobs terminate.
