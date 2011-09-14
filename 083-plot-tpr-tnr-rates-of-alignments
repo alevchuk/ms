@@ -1,0 +1,143 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+library(ggplot2)
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
+OUT_DIR <- paste(EXPERIMENT_NAME, "083-plot-tpr-tnr-rates-of-alignments",
+  sep="/")
+
+
+SAMPLE_SIZE <- 100
+SAMPLES <- c(1)
+RANDS <- c("0.05")
+
+run_type_list <- c(
+  'results-best-remove.99tnr.txt',
+  'results-best-keep.99tpr.txt',
+  'results-guidance-keep.99tpr.txt',
+  'results-guidance-remove.99tnr.txt',
+  'results-normd_dxmod-keep.99tpr.txt',
+  'results-normd_dxmod-remove.99tnr.txt')
+
+#histogram
+
+for (s_id in SAMPLES) {
+  for (r in RANDS) {
+
+    mas_remover_dir_pattern <- paste( #EXPERIMENT_NAME, "/",
+      "remover-s100id2/*-remover", sep="")
+
+    mas_remover_dir_list <- sh(paste("ls -d", mas_remover_dir_pattern))
+
+
+    for(run_type in run_type_list) {
+
+      TPR <- c()
+      TNR <- c()
+      for(mas_remover_dir in mas_remover_dir_list) {
+
+        table_file <- paste(mas_remover_dir, run_type, sep="/")
+        if (!file.exists(table_file)) {
+          cat("WARNING: Skipping! File does not exist ", table_file, "\n")
+          next
+        }
+        remover_results <-
+          read.table(paste(mas_remover_dir, run_type, sep="/"))
+
+        remover_results <- cbind(remover_results, "Positive")
+        colnames(remover_results) <- c( "Seq", "Scr", "Operation", "Actual")
+
+        remover_results[,"Actual"] <- as.character(remover_results[,"Actual"])
+        remover_results[grep("_RAND[0-9]", remover_results[,"Seq"]),"Actual"] <-
+          "Negative"
+
+        postives  <- remover_results[,"Actual"] == "Positive"
+        negatives <- remover_results[,"Actual"] == "Negative"
+        keeps     <- remover_results[,"Operation"] == "Keep"
+        removals  <- remover_results[,"Operation"] == "Remove"
+
+        tp <- length(which(keeps    & postives  ))
+        tn <- length(which(removals & negatives ))
+        fp <- length(which(keeps    & negatives ))
+        fn <- length(which(removals & postives  ))
+
+        #print(remover_results)
+        #print(c("tp:", tp))
+        #print(c("tn:", tn))
+        #print(c("fp:", fp))
+        #print(c("fn:", fn))
+        #print("")
+
+        TPR <- c(TPR, tp / (tp + fn)) 
+        TNR <- c(TNR, tn / (tn + fp))  # = 1 - FPR
+
+      } # Remover dirs done
+
+      print(str(list("TPR", TPR)))
+      print(str(list("TNR", TNR)))
+
+      rates <- data.frame(TPR, TNR)
+      colnames(rates) <- c("tpr", "tnr")
+   
+      png(paste("sample-size100-id2-rand0.05-", run_type,
+          "-tpr-per-msa-hist.png", sep=""), type="cairo")
+      print(ggplot(rates, aes(x=tpr)) + geom_histogram()+ xlim(0,1))
+      dev.off() 
+
+      png(paste("sample-size100-id2-rand0.05-", run_type,
+          "-tnr-per-msa-hist.png", sep=""), type="cairo")
+      print(ggplot(rates, aes(x=tnr)) + geom_histogram() + xlim(0,1))
+      dev.off() 
+    } # run_type
+
+
+
+    #scores <- cbind(scores, 'Positive')
+    #colnames(scores) <- c("Predicted", "Seq", "MSA", "Actual")
+    #
+    #scores[,"Actual"] <- as.character(scores[,"Actual"])
+    #scores[grep("_RAND[0-9]", scores[,"Seq"]),"Actual"] <- "Negative"
+    #
+    ## Normalize to a 0 to 1 scale
+    #scores[,"Predicted"] <- scores[,"Predicted"] - min(scores[,"Predicted"])
+    #scores[,"Predicted"] <- scores[,"Predicted"] / max(scores[,"Predicted"])
+    #
+    #
+    ## pos/neg densities
+    ## This line originated from Harlan Harris https://gist.github.com/937821
+    #plot.densities <- ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
+    #  stat_density(alpha=.8, position='identity') +
+    #  scale_x_continuous('Cutoff',
+    #  labels=sprintf('%.1f %%', (0:5)*20),  breaks=(0:5)/5) +
+    #  scale_y_sqrt('', labels=c('0'), breaks=c(0)) 
+    #
+    #dir.create(OUT_DIR, showWarnings=F) 
+    #png(paste(OUT_DIR, 
+    #  "/posneg-density-sample-size", SAMPLE_SIZE, "-id", s_id, "-rand", r,
+    #  "guidance.png",
+    #  sep=""), width=400, height=400, type="cairo")
+
+    #print(plot.densities)
+    #dev.off()
+
+  }
+}
