@@ -34,7 +34,7 @@ FILTER_CDD_SCRIPT=$0-scripts/filter-cdd.R
 # Limited by the fact that we need to be able to add 5% random sequences
 # by adding 1 sequence
 MIN_MSA_NUMSEQ=19
-MAX_MSA_NUMSEQ=300 # Otherwise things become too slow
+MAX_MSA_NUMSEQ=200 # Otherwise things become too slow
 
 # Limited by the length diversity of 2011 Uniport
 ## for each individual length Uniprot must provide 1000+ unique proteins
