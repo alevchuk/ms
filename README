@@ -22,10 +22,8 @@ Contact:
   Aleksandr Levchuk <alecvhuk@gmail.com>
 
 Installing:
-  make
-
-  One command. Should take about 4 minutes. Installs everithing is ms/opt -
-  the local project directory.
+  One command is all it takes. Simpy type: make. Should take about 4 minutes.
+  Installs everithing is <project>/opt - the local project directory.
 
 Running the MSA cleanup utility:
   You can use the classifier right away. Simply run the ./008-remover
@@ -38,9 +36,12 @@ Running the complete experiment:
   Once data tar.gz are downloaded, run each command manually:
   002-start, 004-reshape-cdd, 006-reshape-uniprot, 008-sample, ...
 
-  006-reshape-uniprot is by far the most time consuming, it converts
-  FASTA to TAB and takes 7.6 hours. 009-add-random can take about 1 hour.
-  Some steps will need to know what sample size you what to operate on.
+  006-reshape-uniprot is by far the most time consuming non-parralizable task,
+  it converts FASTA to TAB and takes 7.6 hours. 009-add-random can take 1 hour
+  depending on sample size and how many samples taken. Some steps will need to
+  know specifics such as what sample size to operate on. 010-run-guidance and
+  026-run-guidance are highly paralalizable each unit only take a few minutes
+  but there are SAMPLE_SIZE x NUM_SAMPLES x (1 + NUM_RANDOM_INJECTIONS) units.
 
 Contributing:
   This code is GPLv3. Free Software. So please don't hesitate to make a fork
