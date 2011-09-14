@@ -40,6 +40,9 @@ NUM_SEQ <- as.numeric(script.args[[3]])
 NUM_RES <- as.numeric(script.args[[4]])
 RAND_RATIO <- as.numeric(script.args[[5]])
 
+# Every RAND_RATIO should have a different seed
+SEED <- SEED * (RAND_RATIO * 10000)
+
 formula_a <- function(n, r) {
  # n is num-seq in the original MSA
  # r is the desired random ratio
