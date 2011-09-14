@@ -1,0 +1,20 @@
+#!/usr/bin/env Rscript
+
+library(ggplot2)
+
+url = paste("http://biocluster.ucr.edu/~alevchuk/projects/032-ms",
+  "examples/trial-cdd-2011-08-v2.31-uniprot-2011-08/roc-best-normd-data.txt",
+  sep="/")
+scores <- read.table(url)
+scores$V1 <- NULL
+scores <- cbind(scores, 1)
+colnames(scores) <- c("scr", "seq", "observed")
+scores[grep("_RAND[0-9]", scores[,"seq"]),"observed"] <- 0
+scores[scores["scr"] < -0.1, "scr"] <- -0.1 # Cap a few outliers?
+
+png(file="jitter.png", width=1000, height=600, type="cairo")
+
+p <- ggplot(scores, aes(1, scr)) + geom_jitter(alpha = I(1 / 2), aes(scr=scr))
+print(p)
+
+dev.off()
