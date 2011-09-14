@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# Tags: very-slow
+# Tags: total-run-13-minutes
 
 # NOTE: msa-list-filtered is the authoritative file,
 #   everything else may not be filtered.
@@ -121,9 +121,7 @@ function callback {
   mv $DATA_OUT/msa-list-filtered{-new,}
 
   # Cleanup (all of this info is already in msa-list-filtered
-  rm $DATA_OUT/msa-sizes-length-trimmed 
-  rm $DATA_OUT/msa-sizes-length
-  rm $DATA_OUT/msa-sizes-numseq
+  rm $DATA_OUT/msa-sizes-numseq && true
 }
 upstream_done_time_prefix=$done_time_prefix
 done_time_prefix=$DATA_OUT/msa-list-filtered
