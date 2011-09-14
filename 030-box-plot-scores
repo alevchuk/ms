@@ -94,11 +94,15 @@ invisible(
 
     axis(2, seq(0,1,by=0.1), las=2)
 
-    ## TODO: Use random_ratios to generate labels
-    lables <- c("Original", "(0, 5%]", "(5%, 10%]", "(10%, 15%]",
-        "(15%, 20%]", "(20%, 25%]","(25%, 30%]","(30%, 35%]",
-        "(35%, 40%]", "(40%, 45%]", "(45%, 50%]"
-        )
+    # TODO: Test me
+    ### TODO: Use random_ratios to generate labels
+    #lables <- c("Original", "(0, 5%]", "(5%, 10%]", "(10%, 15%]",
+    #    "(15%, 20%]", "(20%, 25%]","(25%, 30%]","(30%, 35%]",
+    #    "(35%, 40%]", "(40%, 45%]", "(45%, 50%]"
+    #    )
+    lables <- c("Original",
+      sapply(random_ratios, function(rr) {sprintf("(%d%%, %d%%]", rr - 5, rr)})
+    )
 
     axis(1, 1:length(lables), labels=lables)
 
