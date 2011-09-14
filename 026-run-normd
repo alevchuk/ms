@@ -24,6 +24,8 @@ source ./api/pipeline.sh
 NORMD_RUN_TEMPLATE="$0-scripts/run.sh.template"
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+
+# TODO: Take a Higher Upstream
 UPSTREAM="./$EXPERIMENT_NAME/010-run-guidance-data-out"
 
 DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
@@ -32,7 +34,7 @@ DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
-
+# TODO: Align by yourself
 ls $UPSTREAM/sample-size100-id*-list-tab-rand*-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
   canonical_name=$(echo "$msa_fasta" | awk -F/ '{print $4 "-" $5}')
 

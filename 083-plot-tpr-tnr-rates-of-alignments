@@ -26,8 +26,13 @@ OUT_DIR <- paste(EXPERIMENT_NAME, "083-plot-tpr-tnr-rates-of-alignments",
   sep="/")
 
 
+# TODO: Sample size from command line
 SAMPLE_SIZE <- 100
+
+# TODO: Detect all available samples
 SAMPLES <- c(1)
+
+# TODO: Determine automatically as in 030-box-plot-msa-scores
 RANDS <- c("0.05")
 
 run_type_list <- c(

@@ -21,6 +21,9 @@ library(ggplot2)
 sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
+# TODO: Sample size as command line argument
+# TODO: Use 029-collect-scores general for all methods
 UPSTREAM <- paste(EXPERIMENT_NAME,
   "/014-get-guidance-scores-data-out/sample-size100", sep="")
 UPSTREAM2 <- paste(EXPERIMENT_NAME,
@@ -30,6 +33,8 @@ OUT_DIR <- paste(EXPERIMENT_NAME, "077-plot-density-data-out", sep="/")
 
 SAMPLE_SIZE <- 100
 SAMPLES <- c(1) #,2,3,4,5)
+
+# TODO: Determine rand values automatically as in 030-box-plot-msa-scores
 RANDS <-
   c("0.00", "0.05","0.10","0.15","0.20","0.25",
     "0.30","0.35","0.40","0.45","0.50")

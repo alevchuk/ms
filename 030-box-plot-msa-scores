@@ -106,6 +106,7 @@ invisible(
 
     axis(1, 1:length(lables), labels=lables)
 
+    # TODO: This is a major checkpoint so report numbers of alignments
     title(paste("Sample-", sample_number, " (Means: ", 
     paste(sapply(all_scores, function(x){sprintf("%.3f", mean(x))}),
     sep="", collapse=" , "),

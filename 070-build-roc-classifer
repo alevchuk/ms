@@ -3,6 +3,8 @@
 sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
 SAMPLE_SIZE <- 100
+
+# TODO: Cover all random ammounts automatially as in 030-box-plot-msa-scores
 RAND_AMOUNT <- 0.05
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 
@@ -15,8 +17,10 @@ UPSTREAM_DIR <- paste(EXPERIMENT_NAME,
   paste("sample-size", SAMPLE_SIZE, "-id1-list-tab-rand", RAND_AMOUNT,
     "-tab-nogaps", sep=""), sep="/")
 
+# TODO: Use 029-collect-scores general for all methods
 UPSTREAM_DIR <- "./trial-cdd-2011-08-v2.31-uniprot-2011-08/027-run-normd-with-removals-data-out"
 
+# TODO: Automate selection of distinct methods
 score_files_pattern <- paste(UPSTREAM_DIR, "*-scr", sep="/") # GUIDANCE
 score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-seq-scr", sep="/")
 score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-dx1-seq-scr", sep="/")

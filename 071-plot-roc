@@ -3,6 +3,8 @@
 sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
 SAMPLE_SIZE <- 100
+
+# TODO: Determine automatically as in 030-box-plot-msa-scores
 RAND_AMOUNT <- 0.05
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 
@@ -15,12 +17,14 @@ OUT_DIR <- paste(EXPERIMENT_NAME, "071-plot-roc-out", sep="/")
 library(ROCR)
 dir.create(OUT_DIR, showWarnings=F)
 
+# TODO: Use a generic list
 load(paste(UPSTREAM_DIR, "predictions-guidance.Rdata"    , sep="/"))
 load(paste(UPSTREAM_DIR, "predictions-normd-mod.Rdata"   , sep="/"))
 load(paste(UPSTREAM_DIR, "predictions-normd-dx.Rdata"    , sep="/"))
 load(paste(UPSTREAM_DIR, "predictions-normd-simple.Rdata", sep="/"))
 load(paste(UPSTREAM_DIR, "predictions-normd-mod-dx.Rdata", sep="/"))
 
+# TODO: Move the up to 071-plot-roc
 w_1 <-  4; c_1 <- 2;
 w_2 <- 16; c_2 <- 9;
 w_3 <-  8; c_3 <- 3;
