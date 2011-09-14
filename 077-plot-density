@@ -29,12 +29,28 @@ UPSTREAM2 <- paste(EXPERIMENT_NAME,
 OUT_DIR <- paste(EXPERIMENT_NAME, "077-plot-density-data-out", sep="/")
 
 SAMPLE_SIZE <- 100
-SAMPLES <- c(1,2,3,4,5)
+SAMPLES <- c(1) #,2,3,4,5)
 RANDS <-
   c("0.00", "0.05","0.10","0.15","0.20","0.25",
     "0.30","0.35","0.40","0.45","0.50")
 
-for (method in c("guidance", "normd")) {
+
+Layout <- grid.layout(nrow = 2, ncol = 2, widths = unit(c(2,
+    0.4), c("null", "null")), heights = unit(c(1,
+    1), c("null", "null")))
+
+vplayout <- function(...) {
+    grid.newpage()
+    pushViewport(viewport(layout = Layout))
+}
+
+subplot <- function(x, y)
+  viewport(layout.pos.row = x, layout.pos.col = y)
+
+
+methods_list <- c("guidance", "normd")
+
+for (method in methods_list) {
   for (s_id in SAMPLES) {
     for (r in RANDS) {
       if (method == "guidance") {
@@ -53,7 +69,6 @@ for (method in c("guidance", "normd")) {
           scores_file <- paste(UPSTREAM2, "/sample-size", SAMPLE_SIZE, "-id",
             s_id, "-list-tab-rand", r, "-tab-normd-dx-mod-scr", sep="")
         }
-#trial-cdd-2011-08-v2.31-uniprot-2011-08/028-get-normd-scores-data-out/sample-size100/sample-size100-id1-list-tab-rand0.05-tab-normd-dx-mod-scr
       }
   
       if (!file.exists(scores_file)) {
@@ -75,34 +90,52 @@ for (method in c("guidance", "normd")) {
       ##scores[,"Predicted"] <- scores[,"Predicted"] - min(scores[,"Predicted"])
       ##scores[,"Predicted"] <- scores[,"Predicted"] / max(scores[,"Predicted"])
   
-      ### Cut out some outliers - otherwise they will messup the scale and
-      ### nothing will be visible on the plot
-      s1 <- scores[,"Predicted"]
-      c1 <- quantile(s1,0.25) - (IQR(s1) * 100) # Carefult with this
-      c2 <- quantile(s1,0.75) + (IQR(s1) * 100) # Somethimes it cuts too much
-      scores <- scores[scores[,"Predicted"] > c1,]
-      scores <- scores[scores[,"Predicted"] < c2,]
+      #### Cut out some outliers - otherwise they will messup the scale and
+      #### nothing will be visible on the plot
+      #s1 <- scores[,"Predicted"]
+      #c1 <- quantile(s1,0.25) - (IQR(s1) * 50) # Careful with this
+      #c2 <- quantile(s1,0.75) + (IQR(s1) * 50) # Somethimes it cuts too much
+      #scores <- scores[scores[,"Predicted"] > c1,]
+      #scores <- scores[scores[,"Predicted"] < c2,]
 
 
       # Stabilize colors so that Positive is read and Negative is Blue 
       scores[,"Actual"] <- factor(scores[,"Actual"],
         levels = c("Positive", "Negative"))
-  
+ 
+      if (method == "normd") {
+        limits <- c(-0.007,0.002)
+      } else {
+        limits <- c(0.0, 1.0)
+      } 
       
       # pos/neg densities
       # This line originated from Harlan Harris https://gist.github.com/937821
-      plot.densities <- ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
-        stat_density(alpha=.8, position='identity') +
-        scale_x_continuous('Score'
+      plot.densities <-
+        ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
+        stat_density(alpha=.8, position='stack') +
+        scale_x_continuous('Score', limits=limits
+        #scale_x_continuous('Score', limits=c(-0.007,0.002)
         # , labels=sprintf('%.1f %%', (0:5)*20),  breaks=(0:5)/5 +
-        ) + scale_y_sqrt('Density', labels=c('0'), breaks=c(0)) 
+        ) + opts(axis.text.y = theme_blank(), axis.title.y=theme_blank()) 
+      #+ scale_y_sqrt('Density', labels=c('0'), breaks=c(0))
+
+      plot.densities2 <-
+        ggplot(scores, aes(Predicted, ..count.., fill=Actual)) +
+        stat_density(alpha=.8, position='fill') +
+        #scale_x_continuous('Score', limits=c(-0.007,0.002)
+        scale_x_continuous('Score', limits=limits
+        # , labels=sprintf('%.1f %%', (0:5)*20),  breaks=(0:5)/5 +
+        ) + opts(axis.text.y = theme_blank(), axis.title.y=theme_blank()) 
       
       dir.create(OUT_DIR, showWarnings=F) 
       png(paste(OUT_DIR, 
         "/posneg-density-sample-size", SAMPLE_SIZE, "-id", s_id, "-rand", r,
-        "-", method, ".png", sep=""), width=400, height=400, type="cairo")
-  
-      print(plot.densities)
+        "-", method, ".png", sep=""), width=500, height=600, type="cairo")
+
+      vplayout()
+      print(plot.densities, vp = subplot(1, 1))
+      print(plot.densities2, vp = subplot(2, 1))  
       dev.off()
   
     }
