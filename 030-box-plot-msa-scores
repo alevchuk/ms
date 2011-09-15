@@ -18,12 +18,15 @@
 
 sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
-EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
-
 # Name of this script
 script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
 script_path_list <- strsplit(script_path, '/')[[1]]
 script_name <- script_path_list[[length(script_path_list)]]
+
+# Primary locations
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
+OUT_DIR <- paste(EXPERIMENT_NAME, script_name, sep="/")
 
 # Directory where this script is located
 script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
@@ -54,8 +57,6 @@ SAMPLE_SIZE  <- script_args[[1]]
 
 MAIN_DF <- data.frame()
 
-UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
-OUT_DIR <- paste(EXPERIMENT_NAME, script_name, sep="/")
 
 # 029-collect-scores-data-out/sample-size100-id1-whole-msa-scores
 sample_list <- sh(sprintf("ls %s/sample-size%s-*-whole-msa-scores",
@@ -69,28 +70,18 @@ for(sample_file in sample_list) {
     col.names=c("score", "rand", "unused_column", "msa", "method"))
   MAIN_DF[,"unused_column"] <- NULL
 
-  # Convert rand ratios to numeric
-  MAIN_DF[,"rand"] <- sapply(MAIN_DF[,"rand"], function(str) {
-      str <- as.character(str)
-      if (str == "no_injection") {
-        0
-      } else {
-        as.numeric(paste(strsplit(str, "")[[1]][5:8], sep="", collapse=""))
-      }
-    })
-
   dir.create(OUT_DIR, showWarnings=F)
   sh(sprintf("cp %s-scripts/*html %s", script_name, OUT_DIR))
 
-
   methods <- unique(MAIN_DF[,"method"])
   lapply(methods, function(method) {
-    random_ratios <- unique(MAIN_DF[,"rand"])
+    method_df <- MAIN_DF[MAIN_DF[,"method"] == method,]
+    random_ratios <- unique(method_df[,"rand"])
     random_ratios <- random_ratios[order(random_ratios)]
 
     all_scores <-
     lapply(random_ratios, function(random_ratio) {
-      subset_df <- MAIN_DF[MAIN_DF[,"rand"] == random_ratio, ]
+      subset_df <- method_df[method_df[,"rand"] == random_ratio, ]
       scores <- subset_df[,"score"]
 
       #dropped_msa_list <- subset_df[scores == 0,]
