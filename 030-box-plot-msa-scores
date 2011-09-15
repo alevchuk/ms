@@ -18,7 +18,6 @@
 
 sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
-SAMPLE_SIZE <- 100
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 
 # Name of this script
@@ -30,6 +29,29 @@ script_name <- script_path_list[[length(script_path_list)]]
 script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
 script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " plots box plots per msa", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
 MAIN_DF <- data.frame()
 
 UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
@@ -38,7 +60,6 @@ OUT_DIR <- paste(EXPERIMENT_NAME, script_name, sep="/")
 # 029-collect-scores-data-out/sample-size100-id1-whole-msa-scores
 sample_list <- sh(sprintf("ls %s/sample-size%s-*-whole-msa-scores",
   UPSTREAM_DIR, SAMPLE_SIZE))
-
 
 sample_number <- 0
 for(sample_file in sample_list) {
@@ -81,7 +102,7 @@ for(sample_file in sample_list) {
     })
     #print(all_scores)
 
-    if (length(random_ratios) == 5) {
+    if (length(random_ratios) > 1) {
 
       png(paste(OUT_DIR, "/sample-", sample_number, "-",
         method, ".png", sep=""),
