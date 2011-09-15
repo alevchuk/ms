@@ -116,9 +116,9 @@ function callback {
     rand=$(expr "$line" : '.*sample-size.*-id.*-lis\(.*\)-tab') || (
       echo "error: could not parse out rand in \"$line\""; exit 1)
     if [ "$rand" == "t" ]; then
-      rand="no_injection"
+      rand="0.00"
     else
-      rand=$(expr "$rand" : 't-tab-\(rand.*\)') || (
+      rand=$(expr "$rand" : 't-tab-rand\(.*\)') || (
         echo "error: could not parse out rand in \"$line\""; exit 1)
     fi
 
@@ -166,9 +166,9 @@ function callback {
     rand=$(expr "$line" : '.*sample-size.*-id.*-lis\(.*\)-tab-nogaps') || (
       echo "error: could not parse out rand in \"$line\""; exit 1)
     if [ "$rand" == "t" ]; then
-      rand="no_injection"
+      rand="0.00"
     else
-      rand=$(expr "$rand" : 't-tab-\(rand.*\)') || (
+      rand=$(expr "$rand" : 't-tab-rand\(.*\)') || (
         echo "error: could not parse out rand in \"$line\""; exit 1)
     fi
 
@@ -200,9 +200,9 @@ function callback {
     rand=$(expr "$line" : '.*sample-size.*-id.*-lis\(.*\)-tab') || (
       echo "error: could not parse out rand in \"$line\""; exit 1)
     if [ "$rand" == "t" ]; then
-      rand="no_injection"
+      rand="0.00"
     else
-      rand=$(expr "$rand" : 't-tab-\(rand.*\)') || (
+      rand=$(expr "$rand" : 't-tab-rand\(.*\)') || (
         echo "error: could not parse out rand in \"$line\""; exit 1)
     fi
 
