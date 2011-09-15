@@ -21,29 +21,49 @@ set -u
 
 source ./api/pipeline.sh
 
+if [ $# != 1 ] && [ $# != 2 ]; then
+  echo "Usage: $0 <sample-size>  [-s]" >&2
+  echo "" >&2
+  echo "  <sample-size>        how many alignments should be in 1 sample" >&2
+  echo "" >&2
+  echo "  -f                   force always runing, never skip any steps" >&2
+  exit 1
+fi
+
+# Arguments
+SAMPLE_SIZE=$1                              # sample size (mandatory)
+set +u
+[ "$2" == '-f' ] && export ALWAYS_RUN=true  # skip steps (optional)
+[ -n "$2" ] && [ "$2" != '-f' ] && (echo "Invalid option $3"; exit 1)
+set -u
+
 NORMD_RUN_TEMPLATE="$0-scripts/run.sh.template"
 
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 
-# TODO: Take a Higher Upstream
-UPSTREAM="./$EXPERIMENT_NAME/010-run-guidance-data-out"
+UPSTREAM="./$EXPERIMENT_NAME/008-sample-data-out"
 
-DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
+DATA_IN="./$EXPERIMENT_NAME/$0-data-in/tasks"
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
+RAM_DIR="/dev/shm/$EXPERIMENT_NAME-normd-scr"
 
 
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
 
-# TODO: Align by yourself
-ls $UPSTREAM/sample-size100-id*-list-tab-rand*-tab-nogaps/*.FASTA.tab/MSA.MAFFT.aln.With_Names | while read msa_fasta; do
-  canonical_name=$(echo "$msa_fasta" | awk -F/ '{print $4 "-" $5}')
+#sample-size100-id5-list-tab/
+#sample-size100-id5-list-tab-rand0.05-tab/
+ls $UPSTREAM/sample-size$SAMPLE_SIZE-id*-list-tab*/*.tab |
+while read msa_tab; do
 
-  out_sh="$DATA_IN/$canonical_name.sh"
+  SAMPLE_AND_MSA_NAME=$(echo "$msa_tab" | awk -F/ '{print $4 "-" $5}')
+
+  out_sh="$DATA_IN/$SAMPLE_AND_MSA_NAME.sh"
   cat $NORMD_RUN_TEMPLATE |
-    sed "s|%%DATA_OUT%%|$DATA_OUT|g" |
+    sed "s|%%DATA_OUT%%|$DATA_OUT/$SAMPLE_AND_MSA_NAME|g" |
     sed "s|%%WD%%|`pwd`|g" |
-    sed "s|%%MSA_FASTA%%|$msa_fasta|g" |
-    sed "s|%%CANONICAL_NAME%%|$canonical_name|g" |
+    sed "s|%%MSA_TAB%%|$msa_tab|g" |
+    sed "s|%%SAMPLE_AND_MSA_NAME%%|$SAMPLE_AND_MSA_NAME|g" |
+    sed "s|%%RAM_DIR%%|$RAM_DIR/$SAMPLE_AND_MSA_NAME|g" |
       cat > $out_sh
     chmod +x $out_sh
 
