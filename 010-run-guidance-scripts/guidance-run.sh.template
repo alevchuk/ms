@@ -25,14 +25,13 @@ cd %%WD%%
 source ./api/pipeline.sh
 
 
-SCRATCH_DIR=/dev/shm
 
 
 DATA_IN_DIR=%%DATA_IN%%
 
 DATA_IN_FASTA_FILE=%%FASTA_FILE%%
 
-DATA_OUT=$SCRATCH_DIR/%%DATA_OUT%%
+RAM_DIR=%%RAM_DIR%%
 DATA_OUT_FINAL=%%DATA_OUT%%
 
 
@@ -42,39 +41,35 @@ export PATH=%%MAFFT_PATH%%:$PATH
 GUIDANCE_EXEC=%%GUIDANCE_EXEC%%
 
 
-mkdir -p "$DATA_OUT"{,-new} 2> /dev/null && true
+mkdir -p "$RAM_DIR" 2> /dev/null && true
 mkdir -p "$DATA_OUT_FINAL"{,-new} 2> /dev/null && true
 
 function callback {
-  if [ -n $DATA_OUT ]; then # variable must be non empty
-    rm -rf "$DATA_OUT-new"
+  if [ -n $RAM_DIR ]; then # variable must be non empty
+    rm -rf "$RAM_DIR"
   fi
-  mkdir -p "$DATA_OUT-new"
+  mkdir -p "$RAM_DIR"
 
   $GUIDANCE_EXEC --msaProgram MAFFT --seqType aa \
-    --seqFile $DATA_IN_FASTA_FILE --outDir $DATA_OUT-new &> \
-    $DATA_OUT-new/stdouterr.log
+    --seqFile $DATA_IN_FASTA_FILE --outDir $RAM_DIR &> \
+    $RAM_DIR/stdouterr.log
 
   # Error out if the score file was not created
-  ls $DATA_OUT-new/MSA.MAFFT.Guidance_msa.scr > /dev/null
-
-  # Mark as finalized in scratch
-  rm -rf "$DATA_OUT"
-  mv $DATA_OUT{-new,}
+  ls $RAM_DIR/MSA.MAFFT.Guidance_msa.scr > /dev/null
 
   # Report score
-  ls $DATA_OUT/MSA.MAFFT.Guidance_msa.scr
+  ls $RAM_DIR/MSA.MAFFT.Guidance_msa.scr
 
   # Move back to permanent storage
   rm -rf "$DATA_OUT_FINAL-new"
-  mv "$DATA_OUT/" "$DATA_OUT_FINAL-new/"
+  mv "$RAM_DIR/" "$DATA_OUT_FINAL-new/"
 
   # Mark as finalized on permanent storage
   rm -rf "$DATA_OUT_FINAL"
   mv "$DATA_OUT_FINAL"{-new,}
 
-  # Clean empty directories in scratch space
-  find $SCRATCH_DIR | sort -r | xargs -n1 rmdir 2> /dev/null || true
+  # Clean up
+  rm -rf $RAM_DIR 
 }
 upstream_done_time_prefix="$DATA_IN_DIR"
 done_time_prefix="$DATA_OUT_FINAL"

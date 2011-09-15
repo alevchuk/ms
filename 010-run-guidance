@@ -51,6 +51,8 @@ UPSTREAM_DIR="./$EXPERIMENT_NAME/008-sample-data-out"
 
 GUIDANCE_RUN_TEMPLATE="$0-scripts/guidance-run.sh.template"
 
+RAM_DIR="/dev/shm/$EXPERIMENT_NAME-guidance-scr"
+
 DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
 DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
 mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
@@ -98,6 +100,7 @@ while read sample; do
       sed "s|%%DATA_IN%%|$DATA_IN/$sample|g" |
       sed "s|%%FASTA_FILE%%|$DATA_IN/$sample/$fasta_file|g" |
       sed "s|%%DATA_OUT%%|$DATA_OUT/$sample/$fasta_file|g" |
+      sed "s|%%RAM_DIR%%|$RAM_DIR/$sample-$fasta_file|g" |
         cat > $out_sh
       chmod +x $out_sh
   done
