@@ -25,6 +25,7 @@ script_name <- script_path_list[[length(script_path_list)]]
 
 # Primary locations
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
 UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 
@@ -66,9 +67,12 @@ sample_list <- sh(sprintf("ls %s/sample-size%s-*-seq-scores",
 
 library(ROCR)
 
-sample_number <- 0
-for(sample_file in sample_list) {
-  sample_number <- sample_number + 1
+ROC_DF    <- data.frame()
+ROCR_LIST <- list()
+
+sample_id <- 0 # TODO: Don't rely on the alphabetical order like that
+for(sample_file in sample_list[order(sample_list)]) {
+  sample_id <- sample_id + 1
 
   MAIN_DF <- read.table(sample_file,
     col.names=c("score", "rand", "unused_column", "msa", "method", "seq"))
@@ -87,42 +91,49 @@ for(sample_file in sample_list) {
       scores <- method_df[, "score"]
       seqs <- method_df[, "seq"]
 
-
-      #print(sprintf("%s", random_ratio))
-      #print(paste(methods))
-      #print(length(scores))
-      #print(seqs)
-      #print("")
-
-
-
       predicted <- scores
       observed <- rep(1, length(predicted))
       observed[grep("_RAND[0-9]", seqs)] <- 0
-     
+
+      #print(paste("rand: ", random_ratio))
+      #print(paste(method))
+      #print(paste("scores: ", length(scores)))
+      #print(paste("seqs: ", length(seqs)))
+      #print(paste("neg: ", length(which(observed == 0))))
+      #print("")
+
       pred <- prediction(predicted, observed)
       auc <- performance(pred, "auc")@y.values[[1]][1]
       
       leg_label <- paste(method, " (", signif(auc, 3), " auc)", sep="")
       
-      out_file <- paste("roc-", method, "-", random_ratio, ".Rdata", sep="")
-      p_5 <- pred
-      l_5 <- leg_label
-      
-      dir.create(OUT_DIR, showWarnings=F)
-      save(list=c(
-        "p_5",
-        "l_5"),
-        file=paste(OUT_DIR, out_file, sep="/"))
+      out_file <-
+        paste(OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", sample_id,
+         "-rand", random_ratio, "-", method, "-roc.Rdata", sep="")
+      p_new <- pred
+      l_new <- leg_label
+      save("p_new", "l_new", file=out_file)
 
+      # dir.create(OUT_DIR, showWarnings=F)
+      ## Load
+      #tryCatch(load(file=roc_all), error = function(e) {
+      #   print("roc-all.Rdata no found, I will create one")})
+      ## Initialize
+      #if(!("ROC_DF" %in% ls()) || !is.data.frame(ROC_DF)) {
+      #  ROC_DF <- data.frame() }
+      #if(!("ROC_LIST" %in% ls()) || !is.list(ROCR_LIST)) {
+      #  ROCR_LIST <- list() }
 
-
+      # Update
+      ROCR_LIST <- c(ROCR_LIST, pred)
+      ROC_DF <- rbind(ROC_DF,
+        cbind(leg_label, random_ratio, method, length(ROCR_LIST)))
+      colnames(ROC_DF) <- c("leg_label", "random_ratio", "method", "ROCRobj")
     })
-
-
-
 
   }
 }
 
-
+# Save 
+ROC_ALL_FILE <- paste(OUT_DIR, "roc-all.Rdata", sep="/")
+save("ROC_DF", "ROCR_LIST", file=ROC_ALL_FILE)
