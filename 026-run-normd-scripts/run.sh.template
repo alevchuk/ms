@@ -82,13 +82,14 @@ for seq_id in `seq 1 $num_seq`; do
   # Convert tab to FASTA
   cat $ram_file2 | awk '{print ">" $1 "\n" $2}' > $ram_file2-fasta
 
-  # Re-Align
-  $MAFFT_PATH/mafft  --reorder --amino  --quiet $ram_file2-fasta > \
-    $ram_file2-fasta-mafft
+  ## Re-Align
+  #$MAFFT_PATH/mafft  --reorder --amino  --quiet $ram_file2-fasta > \
+  #  $ram_file2-fasta-mafft
 
   # Run NorMD 
   set +e
-  score_raw=$($NORMD $ram_file2-fasta-mafft $NORMD_OPTS)
+  #score_raw=$($NORMD $ram_file2-fasta-mafft $NORMD_OPTS)
+  score_raw=$($NORMD $ram_file2-fasta $NORMD_OPTS)
   set -e
   (echo "$score_raw" | grep "ERROR") && (echo "$score_raw" >&2 exit 1)
 
