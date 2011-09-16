@@ -113,9 +113,9 @@ function callback {
     $MIN_MSA_AVR_SEQLEN \
     $MAX_MSA_AVR_SEQLEN \
     $MIN_MSA_NUMSEQ \
+    $MAX_MSA_NUMSEQ \
     > $DATA_OUT/msa-list-filtered-new
     
-    #$MAX_MSA_NUMSEQ \
 
   # Commit
   mv $DATA_OUT/msa-list-filtered{-new,}

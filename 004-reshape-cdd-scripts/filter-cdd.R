@@ -19,7 +19,7 @@
 script.path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
 script.args <- commandArgs(trailingOnly=T)
 
-if(length(script.args) != 6) {
+if(length(script.args) != 7) {
        cat(paste(
          paste("Usage:", script.path,
          "<all_alignments_dir>", "<msa_sizes_numseq>", "<min_msa_residues>", 
@@ -36,6 +36,7 @@ if(length(script.args) != 6) {
          "  <max_msa_avr_seqlen> maximum -//-",
          "",
          "  <min_msa_numseq>     minimum number of sequences (NumSeq) in MSA",
+         "  <max_msa_numseq>     maximum -//-",
          "", sep="\n"))
        quit()
 }
@@ -50,17 +51,18 @@ MIN_MSA_AVR_SEQLEN <- as.numeric(script.args[[4]])
 MAX_MSA_AVR_SEQLEN <- as.numeric(script.args[[5]])
 
 MIN_MSA_NUMSEQ <- as.numeric(script.args[[6]])
-MAX_MSA_NUMSEQ <- NA # :)
+MAX_MSA_NUMSEQ <-  as.numeric(script.args[[7]])
 
 
 
 
 
 cat("Counting residues in MSAs and selecting only MSAs that have:", "\n",
-  "  1. No LESS than", MIN_MSA_NUMSEQ, "sequences\n",
-  "  2. No LESS than", MIN_MSA_AVR_SEQLEN, "average sequence length\n",
-  "  3. No MORE than", MAX_MSA_AVR_SEQLEN, "average sequence length\n",
-  "  4. No MORE than", sprintf("%dK", round(MAX_MSA_RESIDUES / 1000)),
+  "  * No LESS than", MIN_MSA_NUMSEQ, "sequences\n",
+  "  * No LESS than", MIN_MSA_AVR_SEQLEN, "average sequence length\n",
+  "  * No MORE than", MAX_MSA_NUMSEQ, "sequences\n",
+  "  * No MORE than", MAX_MSA_AVR_SEQLEN, "average sequence length\n",
+  "  * No MORE than", sprintf("%dK", round(MAX_MSA_RESIDUES / 1000)),
     "residues total\n",
   file=stderr())
 

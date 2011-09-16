@@ -104,16 +104,26 @@ for(sample_file in sample_list[order(sample_list)]) {
 
       pred <- prediction(predicted, observed)
       auc <- performance(pred, "auc")@y.values[[1]][1]
-      
       leg_label <- paste(method, " (", signif(auc, 3), " auc)", sep="")
-      
-      out_file <-
-        paste(OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", sample_id,
-         "-rand", random_ratio, "-", method, "-roc.Rdata", sep="")
-      p_new <- pred
-      l_new <- leg_label
-      save("p_new", "l_new", file=out_file)
 
+      # Append
+      ROCR_LIST <<- c(ROCR_LIST, pred)
+      ROC_DF <<- rbind(ROC_DF,
+        cbind(leg_label, random_ratio, as.character(method)[[1]],
+              length(ROCR_LIST), sample_id))
+      colnames(ROC_DF) <- c("leg_label", "random_ratio", "scoring_method",
+                             "rocr_id", "sample_id")
+                           # TODO: 2 show up as V3, V4
+    
+      ## Writing to separate files 
+      #out_file <-
+      #  paste(OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", sample_id,
+      #   "-rand", random_ratio, "-", method, "-roc.Rdata", sep="")
+      #p_new <- pred
+      #l_new <- leg_label
+      #save("p_new", "l_new", file=out_file)
+
+      ## Complicated "database" management
       # dir.create(OUT_DIR, showWarnings=F)
       ## Load
       #tryCatch(load(file=roc_all), error = function(e) {
@@ -124,11 +134,6 @@ for(sample_file in sample_list[order(sample_list)]) {
       #if(!("ROC_LIST" %in% ls()) || !is.list(ROCR_LIST)) {
       #  ROCR_LIST <- list() }
 
-      # Update
-      ROCR_LIST <- c(ROCR_LIST, pred)
-      ROC_DF <- rbind(ROC_DF,
-        cbind(leg_label, random_ratio, method, length(ROCR_LIST)))
-      colnames(ROC_DF) <- c("leg_label", "random_ratio", "method", "ROCRobj")
     })
 
   }

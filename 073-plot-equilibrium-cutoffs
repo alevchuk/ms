@@ -1,0 +1,100 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script and directory where this script is located
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+# Primary locations
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+UPSTREAM <- paste(EXPERIMENT_NAME,
+  "/070-build-roc-classifer-data-out/roc-all.Rdata", sep="")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+
+
+library(ROCR)
+load(file=UPSTREAM)
+attach(mtcars)
+
+for (row in 1:nrow(ROC_DF)) {
+
+  info <- ROC_DF[row,]
+
+  #lab1 <- as.character(info[,"leg_label"])
+  rand_ratio <- as.character(info[,"random_ratio"])
+  m1 <- as.character(info$V3)
+  sample_id <- as.character(info[,"sample_id"])
+
+  print(sample_id)
+  print(rand_ratio)
+
+  rocr <- ROCR_LIST[[row]]
+
+  tp <- rocr@tp[[1]]
+  tn <- rocr@tn[[1]]
+  fp <- rocr@fp[[1]]
+  fn <- rocr@fn[[1]]
+  npos <- rocr@n.pos[[1]]
+  nneg <- rocr@n.neg[[1]]
+  cutoffs <- rocr@cutoffs[[1]]
+  
+  
+  
+  sensitivity <- tp / (tp + fn)
+  specificity <- tn / (tn + fp)
+  
+  accuracy <- (tp + tn) / (npos + nneg)
+  custom1 <- sensitivity + specificity
+  
+  
+  a <- max(accuracy)
+  a_pos <- which(accuracy == a)
+  a_cutoff <- cutoffs[a_pos] # has multiple max's :(
+  
+  c1 <- max(custom1)
+  c1_pos <- which(custom1 == c1)
+  c1_cutoff <- cutoffs[c1_pos] # has multiple max's :(
+  
+  print(a_cutoff)
+  print(c1_cutoff)
+
+  if (m1 == "guidance_seq_scr") {
+    range_x_min <- 0
+    range_x_max <- 1
+  } else {
+    range_x_min <- min(a_cutoff - 0.1, c1_cutoff - 0.1)
+    range_x_max <- max(a_cutoff + 0.1, c1_cutoff + 0.1)
+  }
+  
+  png(paste("eqilib-sample-size100-id", sample_id, "-rand", rand_ratio,
+      "-", m1, ".png", sep=""), type="cairo")
+  par(mfrow=c(2,1)) 
+  plot(cutoffs, accuracy, xlim=c(range_x_min,range_x_max),
+    main=paste("Rand", rand_ratio, m1, "Best cutoff:", signif(a_cutoff, 2)))
+  
+  plot(cutoffs, custom1 , xlim=c(range_x_min,range_x_max),
+    main=paste("Rand", rand_ratio, m1, "Best cutoff:", signif(c1_cutoff,2)),
+    ylab="sensitivity + specificity")
+  dev.off()
+
+}
