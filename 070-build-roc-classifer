@@ -1,75 +1,128 @@
 #!/usr/bin/env Rscript
 
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
-SAMPLE_SIZE <- 100
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
 
-# TODO: Cover all random ammounts automatially as in 030-box-plot-msa-scores
-RAND_AMOUNT <- 0.05
+# Primary locations
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 
-OUT_DIR <- paste(EXPERIMENT_NAME, "070-build-roc-classifer-data-out", sep="/")
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 
-# GUIDANCE
-UPSTREAM_DIR <- paste(EXPERIMENT_NAME,
-  "032-get-guidance-seq-scores-data-out",
-  paste("rand", RAND_AMOUNT, sep=""),
-  paste("sample-size", SAMPLE_SIZE, "-id1-list-tab-rand", RAND_AMOUNT,
-    "-tab-nogaps", sep=""), sep="/")
-
-# TODO: Use 029-collect-scores general for all methods
-UPSTREAM_DIR <- "./trial-cdd-2011-08-v2.31-uniprot-2011-08/027-run-normd-with-removals-data-out"
-
-# TODO: Automate selection of distinct methods
-score_files_pattern <- paste(UPSTREAM_DIR, "*-scr", sep="/") # GUIDANCE
-score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-seq-scr", sep="/")
-score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-dx1-seq-scr", sep="/")
-score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-mod-seq-scr", sep="/")
-score_files_pattern <- paste(UPSTREAM_DIR, "*-normd-dx1-mod-seq-scr", sep="/")
-
-
-
-
-scr_names <- sh(paste("ls", score_files_pattern, sep=" "))
-
-MAIN_DF <- data.frame()
-FILENAMES_DF = data.frame()
-
-for (scr_file in scr_names) {
-
-  raw <- read.table(scr_file)
-  predicted <- c( as.vector(raw$V2))
-  
-  observed <- rep(1, length(predicted))
-  observed[grep("_RAND[0-9]", raw$V1)] = 0
-
-  MAIN_DF <<- rbind(MAIN_DF, cbind(predicted, observed))
-  FILENAMES_DF <<- rbind(FILENAMES_DF, cbind(as.character(raw$V1), scr_file))
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " plots box plots per msa", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
 }
 
-MAIN_DF <- cbind(MAIN_DF, FILENAMES_DF)
-colnames(MAIN_DF) <- c("predicted", "observed", "secquence.id", "source.file")
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
+
+MAIN_DF <- data.frame()
+
+# 029-collect-scores-data-out/sample-size100-id1-seq-scores
+sample_list <- sh(sprintf("ls %s/sample-size%s-*-seq-scores",
+  UPSTREAM_DIR, SAMPLE_SIZE))
+
 
 
 library(ROCR)
 
-pred <- prediction(MAIN_DF["predicted"], MAIN_DF["observed"])
-auc <- performance(pred, "auc")@y.values[[1]][1]
+sample_number <- 0
+for(sample_file in sample_list) {
+  sample_number <- sample_number + 1
+
+  MAIN_DF <- read.table(sample_file,
+    col.names=c("score", "rand", "unused_column", "msa", "method", "seq"))
+  MAIN_DF[,"unused_column"] <- NULL
+
+  random_ratios <- unique(MAIN_DF[,"rand"])
+  random_ratios <- random_ratios[order(random_ratios)]
+  for (random_ratio in random_ratios) {
+    if(random_ratio == 0) next
+
+    randratio_df <- MAIN_DF[MAIN_DF[,"rand"] == random_ratio, ]
+
+    methods <- unique(randratio_df[,"method"])
+    sapply(methods, function(method) {
+      method_df <- randratio_df[randratio_df[,"method"] == method,]
+      scores <- method_df[, "score"]
+      seqs <- method_df[, "seq"]
+
+
+      #print(sprintf("%s", random_ratio))
+      #print(paste(methods))
+      #print(length(scores))
+      #print(seqs)
+      #print("")
 
 
 
-leg_label <- paste(sep="", "GUIDANCE (", signif(auc, 3), " auc)")
-leg_label <- paste(sep="", "NorMD (", signif(auc, 3), " auc)")
-leg_label <- paste(sep="", "NorMD dx (", signif(auc, 3), " auc)")
-leg_label <- paste(sep="", "NorMD modified (", signif(auc, 3), " auc)")
-leg_label <- paste(sep="", "NorMD modified dx (", signif(auc, 3), " auc)")
+      predicted <- scores
+      observed <- rep(1, length(predicted))
+      observed[grep("_RAND[0-9]", seqs)] <- 0
+     
+      pred <- prediction(predicted, observed)
+      auc <- performance(pred, "auc")@y.values[[1]][1]
+      
+      leg_label <- paste(method, " (", signif(auc, 3), " auc)", sep="")
+      
+      out_file <- paste("roc-", method, "-", random_ratio, ".Rdata", sep="")
+      p_5 <- pred
+      l_5 <- leg_label
+      
+      dir.create(OUT_DIR, showWarnings=F)
+      save(list=c(
+        "p_5",
+        "l_5"),
+        file=paste(OUT_DIR, out_file, sep="/"))
 
-out_file="predictions5.Rdata"
-p_5 <- pred
-l_5 <- leg_label
 
-dir.create(OUT_DIR, showWarnings=F)
-save(list=c(
-  "p_5",
-  "l_5"),
-  file=paste(OUT_DIR, out_file, sep="/"))
+
+    })
+
+
+
+
+  }
+}
+
+
