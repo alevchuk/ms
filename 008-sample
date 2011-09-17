@@ -24,6 +24,8 @@ set -u
 # Tags: takes-optional-arguments
 
 SAMPLING_SCRIPT=$0-scripts/sample.R
+SAMPLING_SCRIPT2=$0-scripts/sample-groups-with-.5identiy.R
+MSA_DIMENTIONS_SCRIPT=$0-scripts/msa-dimentions.rb
  
 if [ $# != 2 ] && [ $# != 3 ]; then
   echo "Usage: $0 <sample-size> <number-of-samples>   [-s]" >&2
@@ -64,26 +66,67 @@ pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Importing data into $DATA_IN" callback
 
 
-
+# Normal Random Sampling
 for seed in `seq $N`; do
-  sample_name="sample-size$SAMPLE_SIZE-id$seed-list"
+  sample_list="sample-size$SAMPLE_SIZE-id$seed-list"
   function callback {
     $SAMPLING_SCRIPT $seed $SAMPLE_SIZE $DATA_IN/msa-list-filtered > \
-      "$DATA_OUT/$sample_name"
+      "$DATA_OUT/$sample_list"
 
-    mkdir -p "$DATA_OUT/$sample_name-tab-new" 2> /dev/null && true
-    cat "$DATA_OUT/$sample_name" | while read msa_line; do
+    mkdir -p "$DATA_OUT/$sample_list-tab-new" 2> /dev/null && true
+    cat "$DATA_OUT/$sample_list" | while read msa_line; do
       msa_tab_filename=$(printf "$msa_line" | awk '{print $1}')
       cp "$UPSTREAM_DATA/all-alignments-tab/$msa_tab_filename" \
-        "$DATA_OUT/$sample_name-tab-new"
+        "$DATA_OUT/$sample_list-tab-new"
     done
-    rm -rf "$DATA_OUT/$sample_name-tab"
-    mv "$DATA_OUT/$sample_name-tab"{-new,}
+    rm -rf "$DATA_OUT/$sample_list-tab"
+    mv "$DATA_OUT/$sample_list-tab"{-new,}
   }
   
   upstream_done_time_prefix=$done_time_prefix
-  done_time_prefix="$DATA_OUT/$sample_name-tab"
+  done_time_prefix="$DATA_OUT/$sample_list-tab"
   pipeline   $upstream_done_time_prefix   $done_time_prefix \
-    "Sample $sample_name from $DATA_IN/msa-list-filtered" \
+    "Sample $sample_list from $DATA_IN/msa-list-filtered" \
+    callback
+done
+
+
+
+# Sampling with fishing and extracting seqeunce groups with 50% identity
+for seed in `seq $N`; do
+  sample_list="sample-size$SAMPLE_SIZE-id50$seed-list"
+  function callback {
+    mkdir -p "$DATA_OUT/$sample_list-tab-new" 2> /dev/null && true
+
+    $SAMPLING_SCRIPT2 \
+      $seed \
+      $SAMPLE_SIZE \
+      $DATA_IN/msa-list-filtered \
+      $UPSTREAM_DATA/all-alignments-tab/ \
+     > \
+      "$DATA_OUT/$sample_list-tab-new/raw"
+
+    cat "$DATA_OUT/$sample_list-tab-new/raw" | $MSA_DIMENTIONS_SCRIPT \
+    > "$DATA_OUT/$sample_list"
+
+    cat "$DATA_OUT/$sample_list-tab-new/raw" | ruby -e "
+      open_files = {}
+      while line = STDIN.gets
+        msa_name, seq_id, seq = line.split(\"\\t\")
+        open_files[msa_name] = \
+          File.open(\"$DATA_OUT/$sample_list-tab-new/#{msa_name}\",'w') if
+            !open_files.keys.include?(msa_name)
+        open_files[msa_name].puts \"#{seq_id}\\t#{seq}\"
+      end
+    "
+    
+    rm -rf "$DATA_OUT/$sample_list-tab"
+    mv "$DATA_OUT/$sample_list-tab"{-new,}
+  }
+  
+  upstream_done_time_prefix=$done_time_prefix
+  done_time_prefix="$DATA_OUT/$sample_list-tab"
+  pipeline   $upstream_done_time_prefix   $done_time_prefix \
+    "Sample $sample_list from $DATA_IN/msa-list-filtered" \
     callback
 done

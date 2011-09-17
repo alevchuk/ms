@@ -75,6 +75,10 @@ msa_list <- msa_list[order(msa_list[,"NumSeq"]),]
 msa_list <-
   msa_list[msa_list[,"NumSeq"] >= MIN_MSA_NUMSEQ, ]
 
+# Filter #2
+msa_list <-
+  msa_list[msa_list[,"NumSeq"] <= MAX_MSA_NUMSEQ, ]
+
 invisible(
   apply(msa_list, 1, function(x) {
     num_seq <- as.numeric(x[["NumSeq"]]) # apply casts msa_list to char :(
@@ -91,21 +95,21 @@ invisible(
 
     filter_it_out <- F
 
-    # Filter #2
+    # Filter #3
     if (rounded_avr_seq_length < MIN_MSA_AVR_SEQLEN)
       filter_it_out <- T
 
-    # Filter #3
+    # Filter #4
     if (rounded_avr_seq_length > MAX_MSA_AVR_SEQLEN)
       filter_it_out <- T
 
-    # Filter #4
+    # Filter #5
     if (num_residues > MAX_MSA_RESIDUES)
       filter_it_out <- T
 
     if (!filter_it_out)
       cat(alignmet_file, "\t", num_seq, "\t", num_residues, "\t",
-        rounded_avr_seq_length, "\n")
+        rounded_avr_seq_length, "\n", sep="")
   })
 )
 
