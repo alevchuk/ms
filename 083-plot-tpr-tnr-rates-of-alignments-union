@@ -1,0 +1,218 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+library(ggplot2)
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
+OUT_DIR <- paste(EXPERIMENT_NAME, "083-plot-tpr-tnr-rates-of-alignments",
+  sep="/")
+
+
+# TODO: Sample size from command line
+SAMPLE_SIZE <- 100
+
+# TODO: Detect all available samples
+SAMPLES <- c(1)
+
+# TODO: Determine automatically as in 030-box-plot-msa-scores
+RANDS <- c("0.05")
+
+run_type_list <- c(
+  'results-guidance-.99tpr.txt',
+  #'results-guidance-.99tnr.txt',
+  'results-normd_dxmod-.99tpr.txt'
+  #,'results-normd_dxmod-.99tnr.txt'
+  )
+
+#histogram
+
+for (s_id in SAMPLES) {
+  for (r in RANDS) {
+
+    mas_remover_dir_pattern <- paste( #EXPERIMENT_NAME, "/",
+      "validate-remover/*-remover", sep="")
+
+    mas_remover_dir_list <- sh(paste("ls -d", mas_remover_dir_pattern))
+
+
+
+
+    # Guidance
+    run_type_g <- run_type_list[[1]]
+    TPRg <- c()
+    TNRg <- c()
+
+    # NorMD
+    run_type_n <- run_type_list[[2]]
+    TPRn <- c()
+    TNRn <- c()
+
+
+    for(mas_remover_dir in mas_remover_dir_list) {
+      # Guidance
+      table_file <- paste(mas_remover_dir, run_type_g, sep="/")
+      if (!file.exists(table_file)) {
+        cat("WARNING: Skipping! File does not exist ", table_file, "\n")
+        next
+      }
+      remover_results_g <-
+        read.table(paste(mas_remover_dir, run_type_g, sep="/"))
+
+      remover_results_g <- cbind(remover_results_g, "Positive")
+      colnames(remover_results_g) <- c( "Seq", "Scr", "Operation", "Actual")
+
+      remover_results_g[,"Actual"] <- as.character(remover_results_g[,"Actual"])
+      remover_results_g[grep("_RAND[0-9]", remover_results_g[,"Seq"]),"Actual"] <- "Negative"
+
+      postives  <- remover_results_g[,"Actual"] == "Positive"
+      negatives <- remover_results_g[,"Actual"] == "Negative"
+      keeps     <- remover_results_g[,"Operation"] == "Keep"
+      removals  <- remover_results_g[,"Operation"] == "Remove"
+
+      tp <- length(which(keeps    & postives  ))
+      tn <- length(which(removals & negatives ))
+      fp <- length(which(keeps    & negatives ))
+      fn <- length(which(removals & postives  ))
+
+      print(remover_results_g)
+      print(c("tp:", tp))
+      print(c("tn:", tn))
+      print(c("fp:", fp))
+      print(c("fn:", fn))
+      print("")
+
+      TPRg <- c(TPRg, tp / (tp + fn)) 
+      TNRg <- c(TNRg, tn / (tn + fp))  # = 1 - FPR
+
+
+
+      # NorMD
+      table_file <- paste(mas_remover_dir, run_type_n, sep="/")
+      if (!file.exists(table_file)) {
+        cat("WARNING: Skipping! File does not exist ", table_file, "\n")
+        next
+      }
+      remover_results <-
+        read.table(paste(mas_remover_dir, run_type_n, sep="/"))
+
+      remover_results <- cbind(remover_results, "Positive")
+      colnames(remover_results) <- c( "Seq", "Scr", "Operation", "Actual")
+
+
+      #remover_results[,"Operation"] <- remover_results[,"Operation"] &
+
+      remover_results[,"Actual"] <- as.character(remover_results[,"Actual"])
+      remover_results[grep("_RAND[0-9]", remover_results[,"Seq"]),"Actual"] <-
+        "Negative"
+
+      postives  <- remover_results[,"Actual"] == "Positive"
+      negatives <- remover_results[,"Actual"] == "Negative"
+
+
+      keeps     <- (remover_results[,"Operation"] == "Keep") &
+        (remover_results_g[,"Operation"] == "Keep")
+      removals  <- (remover_results[,"Operation"] == "Remove") &
+        (remover_results_g[,"Operation"] == "Remove")
+
+      print(keeps)
+      print(removals)
+
+
+      tp <- length(which(keeps    & postives  ))
+      tn <- length(which(removals & negatives ))
+      fp <- length(which(keeps    & negatives ))
+      fn <- length(which(removals & postives  ))
+
+      print(remover_results)
+      print(c("tp:", tp))
+      print(c("tn:", tn))
+      print(c("fp:", fp))
+      print(c("fn:", fn))
+      print("")
+
+     
+      if ((tp + fn) == 0) {
+        TPRn <- c(TPRn, 0.001)
+      } else {
+        TPRn <- c(TPRn, tp / (tp + fn)) 
+      }
+
+      if ((tn + fp) == 0) {
+        TNRn <- c(TNRn, 0.001) 
+      } else {
+        TNRn <- c(TNRn, tn / (tn + fp))  # = 1 - FPR
+      }
+
+      ### Does not work #TPRn[is.nan(TPRn)] <- 0
+      ### Does not work #TPRg[is.nan(TPRg)] <- 0
+
+    } # Remover dirs done
+
+
+
+
+
+    # Bug fix/hack
+    TPRg[TPRg == 0] <- 0.001
+    TNRg[TNRg == 0] <- 0.001
+
+    print(str(list("TPRg", TPRg)))
+    print(str(list("TNRg", TNRg)))
+
+
+    # Bug fix/hack
+    TPRg[TPRn == 0] <- 0.001
+    TNRg[TNRn == 0] <- 0.001
+
+    print(str(list("TPRn", TPRn)))
+    print(str(list("TNRn", TNRn)))
+
+
+
+
+
+
+
+
+
+    rates <- data.frame(TPRn, TNRn)
+    colnames(rates) <- c("tpr", "tnr")
+
+    print(rates)
+   
+    png(paste("sample-size100-id2-rand0.05-intersect",
+        "-tpr-per-msa-hist.png", sep=""), width=250, heigh=250, type="cairo")
+    print(ggplot(rates, aes(x=tpr)) + geom_histogram()+ xlim(0,1))
+    dev.off() 
+
+    png(paste("sample-size100-id2-rand0.05-intersect",
+        "-tnr-per-msa-hist.png", sep=""), width=250, heigh=250, type="cairo")
+    print(ggplot(rates, aes(x=tnr)) + geom_histogram() + xlim(0,1))
+    dev.off() 
+
+
+
+
+
+
+
+  }
+}
