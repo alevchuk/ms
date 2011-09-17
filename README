@@ -13,7 +13,9 @@ Requirements:
 Included packages:
   MAFFT v6.857
   GUIDANCE v1.1
+  norMD 1_3
   GNU Parallel v20110822
+  bio3d 1.1-3
 
 Tested on:
   Debian GNU/Linux 6.0 (Lenny)

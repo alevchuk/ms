@@ -5,11 +5,14 @@ set -e
 
 THIS_DIRECTORY="../opt/"
 
-tar zxvf misc-bioinfo-scripts.tar.gz 
+tar xvf misc-bioinfo-scripts.tar.gz 
 mv misc-bioinfo-scripts $THIS_DIRECTORY && true
 
+tar xf bio3d-1.1-3-alevchuk-patch.tar.gz
+mv bio3d-1.1-3-alevchuk-patch $THIS_DIRECTORY/bio3d && true
+
 tar xf norMD1_3.tar.gz
-mv normd_noexpat ../opt/norMD1_3
+mv normd_noexpat $THIS_DIRECTORY/norMD1_3 && true
 (cd ../opt/norMD1_3; make)
 
 tar xf guidance.v1.1.tgz
