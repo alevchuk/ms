@@ -1,0 +1,192 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# To run Bash commands
+SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+# Primary locations
+EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " plots max Matthews correlation coefficient", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size>  Sample size",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
+# Porject conventions
+SAMPLE_FILES <- SH(paste(
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores", sep=""))
+
+library(ggplot2)
+
+plot_matthews_max <-
+function(scores_df, injection_types, scoring_methods, info) {
+
+  if (length(scoring_methods) != 2) {
+    write("ERROR: I only know how to handle 2 scoring methods\n")
+    quit()
+  }
+
+  out_file <- paste(
+    OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
+    "-matthews-max.png", sep="")
+
+  for(injection_type in injection_types) {
+    local({
+      scores_df <- scores_df[scores_df[,'rand'] == injection_type,]
+      scoring_methods <- sort(as.character(unique(scores_df[,'method'])))
+      for(scoring_method in scoring_methods) {
+        local({
+          scores_df <- scores_df[scores_df[,'method'] == scoring_method,]
+
+          # Sort by score (lowest scores on the bottom)
+          scores_df <- scores_df[order(-scores_df[,"scr"]),]
+
+          # Frequently used subset (after sorting!)
+          all_scores <- scores_df[,"scr"] 
+
+          ## Choose cutoffs
+          cutoffs <- sapply(1:(nrow(scores_df) - 1), function(i) {
+            scores_df[i,'scr']/2 + scores_df[i+1,'scr']/2
+          })
+          cutoffs <- unique(cutoffs)
+
+          # Running into one of these extreams should become
+          # obvious, but we have them here to capture all possible cutoffs
+          cutoffs <- c(max(all_scores) + 100, cutoffs, min(all_scores) - 100)
+
+          # True positives
+          tp <- sapply(cutoffs, function(cutoff) {
+            predicted_positive <- (all_scores > cutoff)
+            length(which(scores_df[predicted_positive, "Known"] == "Positive"))
+          })
+
+          # True negatives
+          tn <- sapply(cutoffs, function(cutoff) {
+            predicted_negative <- (all_scores < cutoff)
+            length(which(scores_df[predicted_negative, "Known"] == "Negative"))
+          })
+
+          # False positives
+          fp <- sapply(cutoffs, function(cutoff) {
+            predicted_positive <- (all_scores > cutoff)
+            length(which(scores_df[predicted_positive, "Known"] != "Positive"))
+          })
+
+          # False negatives
+          fn <- sapply(cutoffs, function(cutoff) {
+            predicted_negative <- (all_scores < cutoff)
+            length(which(scores_df[predicted_negative, "Known"] != "Negative"))
+          })
+
+          cat("Injection type", injection_type, "\n")
+          print(all_scores[(length(all_scores) - 500):length(all_scores)])
+          print(fn[(length(fn) - 500):length(fn)])
+          cat("\n\n\n")
+
+          ## To avoid dividing by 0 in Matthews equation
+          #tp[tp == 0] <- 1
+          #tn[tn == 0] <- 1
+          #fp[fp == 0] <- 1
+          #fn[fn == 0] <- 1
+
+          #matthews <-
+          #  ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
+
+          #matthews[matthews == Inf] <- NaN
+          #matthews[is.nan(matthews)] <- -1.2
+          ##accuracy <- (tp + tn) / (npos + nneg)
+
+          #mmax <- max(matthews)
+          #m_pos <- which(matthews == mmax)
+          #m_cutoff <- cutoffs[m_pos]
+        })
+      }
+    })
+  }
+
+  #png(out_file, width=500, heigh=500, type="cairo")
+  #g <- ggplot(scores_df, aes(x=scr, fill=Known))
+
+  cat(out_file, "\n", sep="")
+
+}
+
+# Reshaper
+add_known_column <- function(scores_df) {
+  # Mark +/- based on the sequence name
+  n <- colnames(scores_df)
+  scores_df <- cbind(scores_df,
+    factor("Positive", levels=c("Positive", "Negative")))
+  colnames(scores_df) <- c(n, "Known")
+
+  locations_of_negatives <- grep("_RAND[0-9]", scores_df[,'seqid'])
+  if (length(locations_of_negatives) > 0) {
+    scores_df[locations_of_negatives, "Known"] <- "Negative"
+  }
+
+  scores_df
+}
+
+for(sample_file in SAMPLE_FILES) {
+  scores_df <- read.table(sample_file)
+  colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+
+  injection_types <- as.numeric(sort(unique(as.character(scores_df[,'rand']))))
+  scoring_methods <- sort(as.character(unique(scores_df[,'method'])))
+
+  sample_id <- SH(sprintf(
+   "ruby -e '\"%s\" =~ /sample-size[0-9]+-id([0-9]+)/; puts $1'",
+   sample_file))
+
+  scores_df <- add_known_column(scores_df)
+
+  plot_matthews_max(scores_df,
+    injection_types,
+    scoring_methods,
+    info=list(sample_id=sample_id))
+}
