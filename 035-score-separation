@@ -1,0 +1,144 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+
+# Primary locations
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out-old", sep="")
+
+dir.create(OUT_DIR, showWarnings=FALSE)
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " plots box plots per msa", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
+
+# Porject conventions
+SAMPLE_FILES <- sh(paste(
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores", sep=""))
+
+
+reshape_data <- function(scores_df, rand) {
+  # Mark +/- based on the sequence name
+  n <- colnames(scores_df)
+  scores_df <- cbind(scores_df,
+    factor("Positive", levels=c("Positive", "Negative")))
+  colnames(scores_df) <- c(n, "Actual")
+  if (rand > 0) {
+    locations_of_negatives <- grep("_RAND[0-9]", scores_df[,'seqid'])
+    scores_df[locations_of_negatives, "Actual"] <- "Negative"
+  }
+
+  # Scale so that number of positive equal to the number of negative
+  if (rand > 0) {
+    negatives <- scores_df[locations_of_negatives, ]
+    for(i in 1:(18 * 0.05 / rand))
+      scores_df <- rbind(scores_df, negatives)
+  }
+
+  scores_df
+}
+
+
+
+# Plotter
+library(ggplot2)
+plot_score_separation <- function(scores_df, info) {
+  binwidth <- 0.01
+  png(paste(
+    OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
+    "-rand", sprintf("%.2f", info$injection_type), "-method-", info$method,
+    "-score-sep-hist.png", sep=""),
+    width=500, heigh=500, type="cairo")
+  g <- ggplot(scores_df, aes(x=scr, fill=Actual))
+
+  if (info$method == "normd_dx_mod_seq_scr") {
+    g <- g + xlim(-0.02,0.005)
+    binwidth <- 0.00025
+  }
+
+  g <- g + geom_histogram(binwidth=binwidth)
+  print(g)
+  dev.off() 
+}
+
+
+
+for(sample_file in SAMPLE_FILES) {
+  scores_df <- read.table(sample_file)
+  colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+  injection_types <- sort(unique(scores_df[,'rand']))
+
+  for(injection_type in injection_types) {
+    local({
+      scores_df <- scores_df[scores_df[,'rand'] == injection_type,]
+      scoring_methods <- sort(as.character(unique(scores_df[,'method'])))
+      for(scoring_method in scoring_methods) {
+        local({
+          scores_df <- scores_df[scores_df[,'method'] == scoring_method,]
+
+          sample_id <- sh(sprintf(
+           "ruby -e '\"%s\" =~ /sample-size[0-9]+-id([0-9])+/; puts $1'",
+           sample_file))
+
+          scores_df <- reshape_data(scores_df, injection_type)
+
+          plot_score_separation(scores_df, 
+            info=list(sample_id=sample_id,
+                      injection_type=injection_type,
+                      method=scoring_method))
+        })
+      }
+    })
+  }
+}
+
+
+
