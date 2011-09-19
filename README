@@ -9,6 +9,7 @@ Requirements:
   Ruby
   Bioperl (needed by GUIDANCE)
   dos2unix (needed by GUIDANCE)
+  ROCR, ggplot2 (R packages)
 
 Included packages:
   MAFFT v6.857
@@ -65,3 +66,14 @@ Pipeline API:
   Almost all scripts use ./api/pipeline.sh a very small script to help avoid
   repeating some fine-granularity operations, useful is you forget which
   operations already completed and if some cluster jobs terminate.
+
+References:
+  Thompson, J. D., Plewniak, F., Ripp, R., Thierry, J.-C., Poch, O., 2001.
+    Towards a reliable objective function for multiple sequence alignments.
+    Journal of Molecular Biology 314 (4), 937-951.
+    URL http://www.sciencedirect.com/science/article/pii/S0022283601951873
+
+  Penn, O., Privman, E., Landan, G., Graur, D., Pupko, T., Aug 2010.
+    An alignment confidence score capturing robustness to guide tree uncertainty.
+    Mol Biol Evol 27 (8), 1759-1767.
+    URL http://www.hubmed.org/display.cgi?uids=20207713
