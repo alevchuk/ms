@@ -89,8 +89,10 @@ opts(
 
 dir.create(OUT_DIR, showWarnings=FALSE)
 
-plot_matthews_max <-
-function(scores_df, injection_types, scoring_methods, info) {
+
+
+plot_matthews_max <- function(scores_df, injection_types,
+                              scoring_methods, info, cutoffs_outfile) {
 
   if (length(scoring_methods) != 2) {
     write("ERROR: I only know how to handle 2 scoring methods\n")
@@ -104,7 +106,15 @@ function(scores_df, injection_types, scoring_methods, info) {
 
   for(injection_type in injection_types) {
     local({
+
       scores_df <- scores_df[scores_df[,'rand'] == injection_type,]
+
+
+      #print(c("scores_df", "injection_type"))
+      #print(scores_df) # Empty! ???
+      #print(injection_type)
+
+
 
       both <- data.frame()
       g_cutoffs <- c()
@@ -112,7 +122,14 @@ function(scores_df, injection_types, scoring_methods, info) {
 
       for(scoring_method in scoring_methods) {
         local({
+
+          #print(c("scores_df", "scoring_method"))
+          #print(scores_df) # Empty! ???
+          #print(scoring_method) # guidance_seq_scr
+
+
           scores_df <- scores_df[scores_df[,'method'] == scoring_method,]
+
 
           # Sort by score (lowest scores on the bottom)
           scores_df <- scores_df[order(-scores_df[,"scr"]),]
@@ -185,16 +202,22 @@ function(scores_df, injection_types, scoring_methods, info) {
 
           # Order of these two matters
           m[fp == 0 & fn == 0] <- 2  # 2x best
-          m[tp == 0 | tn == 0] <- -1 # worst
+          m[tp == 0 | tn == 0] <- -1 # worst # TODO: In extreams allow tn=0 or tp=0
+                                     #               but pay attemtion to cut gaps?
+          m[-Inf] <- -1 # worst if fp*fn is greater than tp*tn
 
           matthews <- m
           mmax <- max(matthews)
           m_pos <- which(matthews == mmax)
           m_cutoff <- cutoffs[m_pos]
 
-          print(c("matthews","mmax","m_cutoff"))
+          print(c(
+           #"cutoffs",
+           "matthews","mmax","m_pos", "m_cutoff"))
+          #print(cutoffs)
           print(matthews)
           print(mmax)
+          print(m_pos)
           print(m_cutoff)
 
           mini_df <<-
@@ -209,6 +232,12 @@ function(scores_df, injection_types, scoring_methods, info) {
 
         })
       } # Scoring  method
+
+
+
+      # ------------------------------------------------------------
+
+
 
       # Sort for easier bug hunting
       both <- both[order(-both$n_scr),]
@@ -243,6 +272,7 @@ function(scores_df, injection_types, scoring_methods, info) {
           # Order of these two matters
           m[fp == 0 & fn == 0] <- 2  # 2x best
           m[tp == 0 | tn == 0] <- -1 # worst
+          m[-Inf] <- -1 # worst if fp*fn is greater than tp*tn
 
           #if (tp == 0 || tn == 0) m <- -1 # worst
           #if (fp == 0 && fn == 0) m <- 2  # 2x best
@@ -297,6 +327,7 @@ function(scores_df, injection_types, scoring_methods, info) {
         print(g_matt_best_cutoff)
         cat("NorMD M. best cutoff: ")
         print(n_matt_best_cutoff)
+        print("+++++++++++++++++++++++++++++++++++++")
 
       })
 
@@ -364,6 +395,8 @@ function(scores_df, injection_types, scoring_methods, info) {
   } # Injection Type
 
   #print(mini_df)
+  write.table(mini_df, file=cutoffs_outfile, sep="\t", append=T)
+  flush(cutoffs_outfile)
 
   # Plot Matthews 
   png(paste(info$sample_dir, "/", info$msa, ".png", sep=""),
@@ -412,17 +445,55 @@ for(sample_file in SAMPLE_FILES) {
     paste(OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", sample_id, sep="")
   dir.create(sample_dir, showWarnings=FALSE)
 
+  # Open files for writing scores
+  cutoffs_outfile <- file(paste(sample_dir, "-cutoffs", sep=""))
+  open(cutoffs_outfile, "w")
+
+  # All alignent in the sample
   msa_list <- sort(as.character(unique(scores_df[,'msa'])))
+
+  #for(msa in c("cd07091")) {
   for(msa in msa_list) {
     local({
       scores_df <- scores_df[scores_df[,'msa'] == msa,]
-      scores_df <- add_known_column(scores_df)
 
-      plot_matthews_max(scores_df,
-        injection_types,
-        scoring_methods,
-        info=list(sample_id=sample_id, sample_dir=sample_dir, msa=msa))
-     })
+
+      #
+      # Check that all injection types exists
+      #
+      injection_types_here <-
+        as.numeric(sort(unique(as.character(scores_df[,'rand']))))
+      non_existing_injection_types <- setdiff(injection_types, injection_types_here)
+
+
+      #
+      # Check that all scoring methods exists
+      #
+      scoring_methods_here <- sort(as.character(unique(scores_df[,'method'])))
+      non_existing_scoring_methods <- setdiff(scoring_methods_here,scoring_methods)
+
+
+      if (length(non_existing_injection_types) > 0) {
+        write(paste("WARNING: Rand", non_existing_injection_types,
+          " does not exist for MSA ", msa, " in ", sample_dir, sep=""), stderr())
+
+      } else if (length(non_existing_scoring_methods) > 0) {
+         write(paste("WARNING: Rand", non_existing_scoring_methods,
+           " does not exist for MSA ", msa, " in ", sample_dir, sep=""), stderr())
+
+      } else {
+
+        scores_df <- add_known_column(scores_df)
+
+
+        plot_matthews_max(scores_df,
+          injection_types = injection_types,
+          scoring_methods = scoring_methods,
+          info = list(sample_id=sample_id, sample_dir=sample_dir, msa=msa),
+          cutoffs_outfile = cutoffs_outfile)
+      }
+
+    })
   }
 
 }
