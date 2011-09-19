@@ -63,6 +63,32 @@ SAMPLE_FILES <- SH(paste(
 
 library(ggplot2)
 
+# Font change approach from 
+# http://stackoverflow.com/questions/4094094/modifying-fonts-in-ggplot2/4104295
+theme_min <- function (size=10, font=NA, face='plain', axisColor='#999999', 
+    textColor='black') 
+{
+    theme_text = function(...)
+        ggplot2::theme_text(family=font, face=face, colour=textColor, 
+            size=size, ...)
+opts(
+    axis.text.x = theme_text(),
+    axis.text.y = theme_text(),
+    axis.title.x = theme_text(),
+    axis.title.y = theme_text(angle=90, vjust=unit(0.5, "mm")),
+    strip.text.x = theme_text(),
+    strip.text.y = theme_text(angle=-90),
+    legend.text = theme_text(hjust=0),
+    legend.title = theme_text(hjust=0),
+    plot.title = theme_text(hjust=0),
+    plot.margin = unit(c(3,3,3,3), "mm")
+    )
+}
+
+
+
+dir.create(OUT_DIR, showWarnings=FALSE)
+
 plot_matthews_max <-
 function(scores_df, injection_types, scoring_methods, info) {
 
@@ -71,14 +97,19 @@ function(scores_df, injection_types, scoring_methods, info) {
     quit()
   }
 
-  out_file <- paste(
-    OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
-    "-matthews-max.png", sep="")
+  mini_df <- data.frame()
+      
+  # Do not plot the 0 injections
+  injection_types <- injection_types[injection_types != 0.00]
 
   for(injection_type in injection_types) {
     local({
       scores_df <- scores_df[scores_df[,'rand'] == injection_type,]
-      scoring_methods <- sort(as.character(unique(scores_df[,'method'])))
+
+      both <- data.frame()
+      g_cutoffs <- c()
+      normd_cutoffs <- c()
+
       for(scoring_method in scoring_methods) {
         local({
           scores_df <- scores_df[scores_df[,'method'] == scoring_method,]
@@ -97,7 +128,22 @@ function(scores_df, injection_types, scoring_methods, info) {
 
           # Running into one of these extreams should become
           # obvious, but we have them here to capture all possible cutoffs
-          cutoffs <- c(max(all_scores) + 100, cutoffs, min(all_scores) - 100)
+          cutoffs <- c(max(all_scores) + 10, cutoffs, min(all_scores) - 10)
+
+          if (scoring_method == "guidance_seq_scr") {
+            # Guidance goes first alphabetically
+            both <<- scores_df[,c('seqid', 'scr')]
+            colnames(both) <<- c('seqid', 'g_scr')
+
+            g_cutoffs <<- cutoffs
+          }
+
+          if (scoring_method == "normd_dx_mod_seq_scr") {
+            both <<- merge(both, scores_df[,c('seqid', 'scr')])
+            names(both)[names(both) == 'scr'] <<- 'n_scr'
+
+            normd_cutoffs <<- cutoffs
+          } 
 
           # True positives
           tp <- sapply(cutoffs, function(cutoff) {
@@ -123,10 +169,8 @@ function(scores_df, injection_types, scoring_methods, info) {
             length(which(scores_df[predicted_negative, "Known"] != "Negative"))
           })
 
-          cat("Injection type", injection_type, "\n")
-          print(all_scores[(length(all_scores) - 500):length(all_scores)])
-          print(fn[(length(fn) - 500):length(fn)])
-          cat("\n\n\n")
+          #print(all_scores[(length(all_scores) - 500):length(all_scores)])
+          #print(fn[(length(fn) - 500):length(fn)])
 
           ## To avoid dividing by 0 in Matthews equation
           #tp[tp == 0] <- 1
@@ -134,35 +178,215 @@ function(scores_df, injection_types, scoring_methods, info) {
           #fp[fp == 0] <- 1
           #fn[fn == 0] <- 1
 
-          #matthews <-
-          #  ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
+          # Historic 2011-09-19 used to be sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
+          m <-
+            ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
+          #matthews[is.na(matthews) | matthews == Inf | matthews == -Inf] <- 0
 
-          #matthews[matthews == Inf] <- NaN
-          #matthews[is.nan(matthews)] <- -1.2
-          ##accuracy <- (tp + tn) / (npos + nneg)
+          # Order of these two matters
+          m[fp == 0 & fn == 0] <- 2  # 2x best
+          m[tp == 0 | tn == 0] <- -1 # worst
 
-          #mmax <- max(matthews)
-          #m_pos <- which(matthews == mmax)
-          #m_cutoff <- cutoffs[m_pos]
+          matthews <- m
+          mmax <- max(matthews)
+          m_pos <- which(matthews == mmax)
+          m_cutoff <- cutoffs[m_pos]
+
+          print(c("matthews","mmax","m_cutoff"))
+          print(matthews)
+          print(mmax)
+          print(m_cutoff)
+
+          mini_df <<-
+            rbind(mini_df, 
+              data.frame(
+                Injection_Type=signif(injection_type, 2),
+                Max_Matt_Cutoff=m_cutoff[[1]],
+                Scoring_Method=factor(scoring_method, levels=scoring_methods),
+                Ground_Truth="Known"
+              )
+            )
+
         })
+      } # Scoring  method
+
+      # Sort for easier bug hunting
+      both <- both[order(-both$n_scr),]
+
+      g_matt_best <- -2 # The worst theoretically possible is -1
+      n_matt_best_cutoff <- NA
+      g_matt_best_cutoff <- NA
+
+      # Lets take NorMD the ground truth
+      # but doing it the other way should be mathematically symmetrical
+      sapply(normd_cutoffs, function(normd_cutoff) {
+
+        m_df <-
+        sapply(g_cutoffs, function(g_cutoff) {
+          # "True" positives
+          predicted_positive <- both[both$g_scr > g_cutoff,]
+          tp <- length(which(predicted_positive$n_scr > normd_cutoff))
+
+          # "True" negatives
+          predicted_negative <- both[both$g_scr < g_cutoff,]
+          tn <- length(which(predicted_negative$n_scr < normd_cutoff))
+
+          # "False" positives
+          fp <- length(which(predicted_positive$n_scr < normd_cutoff))
+          
+          # "False" negatives
+          fn <- length(which(predicted_negative$n_scr > normd_cutoff))
+
+          # Historic 2011-09-19 used to be sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
+          m <- ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
+
+          # Order of these two matters
+          m[fp == 0 & fn == 0] <- 2  # 2x best
+          m[tp == 0 | tn == 0] <- -1 # worst
+
+          #if (tp == 0 || tn == 0) m <- -1 # worst
+          #if (fp == 0 && fn == 0) m <- 2  # 2x best
+
+          list(counts=paste(tp,tn,fp,fn, sep="-"), matthews=m)
+        })
+        m_df <- as.data.frame(t(m_df))
+        matthews_per_each_g_cutoff <- as.numeric(m_df$matthews)
+
+        #print(g_cutoffs)
+        matthews_per_each_g_cutoff[
+         is.na(matthews_per_each_g_cutoff)] <- -2
+
+        # Local
+        max_matt <- max(matthews_per_each_g_cutoff)
+        max_matt_g_cutoff <- 
+          g_cutoffs[which(matthews_per_each_g_cutoff ==
+          max_matt)]
+
+        # Global
+        if (max_matt >= g_matt_best[[1]]) {
+          if (max_matt > g_matt_best[[1]]) {
+            # Strictly better? Overwrites the current best-record!
+            g_matt_best <<- max_matt
+            n_matt_best_cutoff <<- normd_cutoff
+            g_matt_best_cutoff <<- max_matt_g_cutoff
+          } else {
+            # Save all co-optimals
+
+            # Do not add cuts that are on the extremes (untested, too rare)
+            if (length(which(normd_cutoff < both$n_scr)) != 0 &&
+                length(which(normd_cutoff > both$n_scr)) != 0 &&
+                length(which(max_matt_g_cutoff > both$g_scr)) != 0 &&
+                length(which(max_matt_g_cutoff < both$g_scr)) != 0) {
+
+                g_matt_best <<- 
+                  c(g_matt_best, max_matt)
+                n_matt_best_cutoff <<-
+                  c(n_matt_best_cutoff, normd_cutoff)
+                g_matt_best_cutoff <<-
+                  c(g_matt_best_cutoff, max_matt_g_cutoff)
+            }
+          }
+        }
+
+        ## ++++++++++ bug search / check +++++++++++++
+        print(both)
+        cat("NorMD cutoff", normd_cutoff, "\n")
+	print(as.numeric(m_df$matthews))
+	print(as.character(m_df$counts))
+        cat("Guidance M. best cutoff: ")
+        print(g_matt_best_cutoff)
+        cat("NorMD M. best cutoff: ")
+        print(n_matt_best_cutoff)
+
+      })
+
+
+      # Handle co-optinal solutions
+      if (length(g_matt_best) > 1) {
+        print("Co-optimal solution!")
+        print(g_matt_best)
+        print(g_matt_best_cutoff)
+        print(n_matt_best_cutoff)
+
+        # Precondition: there are no co-optimal cuts on the extremes
+	closest_score <-
+          sapply(n_matt_best_cutoff, function(i){
+            # first one that's less
+            both$n_scr[both$n_scr < i][[1]]
+          })
+        cut_gaps <- n_matt_best_cutoff - closest_score
+        where_the_winner_is <- which(cut_gaps == max(cut_gaps))
+
+        if (length(where_the_winner_is) != 1) {
+          write("ERROR: Cannot descide among co-optimal solutions!\n",stderr())
+          quit()
+        }
+
+        g_matt_best        <- g_matt_best[[where_the_winner_is]]
+        g_matt_best_cutoff <- g_matt_best_cutoff[[where_the_winner_is]]
+        n_matt_best_cutoff <- n_matt_best_cutoff[[where_the_winner_is]]
       }
+
+
+      #quit() # Debug 1 msa
+
+      # Historic 2011-09-18
+      ### For how many seqences do we agree to keep
+      #agreement <- length(intersect(
+      #  both[both$g_scr > g_matt_best_cutoff, 'seqid'],
+      #  both[both$n_scr > n_matt_best_cutoff, 'seqid'])) ** 2
+      
+      #print(g_matt_best)
+
+      mini_df <<-
+        rbind(mini_df, 
+          data.frame(
+            Injection_Type=signif(injection_type, 2),
+            Max_Matt_Cutoff=g_matt_best_cutoff,
+            Scoring_Method=factor("guidance_seq_scr", levels=scoring_methods),
+            Ground_Truth="Ab Initio"
+        )
+      )
+
+      mini_df <<-
+        rbind(mini_df, 
+          data.frame(
+            Injection_Type=signif(injection_type, 2),
+            Max_Matt_Cutoff=n_matt_best_cutoff,
+            Scoring_Method=factor("normd_dx_mod_seq_scr",
+              levels=scoring_methods),
+            Ground_Truth="Ab Initio"
+        )
+      )
+
+
     })
-  }
+  } # Injection Type
 
-  #png(out_file, width=500, heigh=500, type="cairo")
-  #g <- ggplot(scores_df, aes(x=scr, fill=Known))
+  #print(mini_df)
 
-  cat(out_file, "\n", sep="")
+  # Plot Matthews 
+  png(paste(info$sample_dir, "/", info$msa, ".png", sep=""),
+      width=500, height=500, type="cairo")
+
+  g <- ggplot(data=mini_df,
+       aes(x=Injection_Type, y=Max_Matt_Cutoff, color=Ground_Truth)) +
+       geom_point() + scale_size(legend = FALSE) +
+       geom_line(alpha=.5, size=3) +
+       facet_grid(Scoring_Method ~ ., scales = "free") +
+       theme_min(size=18) 
+    #geom_line() + geom_point() + opts(title=scoring_method)
+
+  print(g)
+  dev.off()
 
 }
 
 # Reshaper
 add_known_column <- function(scores_df) {
   # Mark +/- based on the sequence name
-  n <- colnames(scores_df)
   scores_df <- cbind(scores_df,
-    factor("Positive", levels=c("Positive", "Negative")))
-  colnames(scores_df) <- c(n, "Known")
+    Known=factor("Positive", levels=c("Positive", "Negative")))
 
   locations_of_negatives <- grep("_RAND[0-9]", scores_df[,'seqid'])
   if (length(locations_of_negatives) > 0) {
@@ -173,6 +397,7 @@ add_known_column <- function(scores_df) {
 }
 
 for(sample_file in SAMPLE_FILES) {
+
   scores_df <- read.table(sample_file)
   colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
 
@@ -183,10 +408,21 @@ for(sample_file in SAMPLE_FILES) {
    "ruby -e '\"%s\" =~ /sample-size[0-9]+-id([0-9]+)/; puts $1'",
    sample_file))
 
-  scores_df <- add_known_column(scores_df)
+  sample_dir <-
+    paste(OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", sample_id, sep="")
+  dir.create(sample_dir, showWarnings=FALSE)
 
-  plot_matthews_max(scores_df,
-    injection_types,
-    scoring_methods,
-    info=list(sample_id=sample_id))
+  msa_list <- sort(as.character(unique(scores_df[,'msa'])))
+  for(msa in msa_list) {
+    local({
+      scores_df <- scores_df[scores_df[,'msa'] == msa,]
+      scores_df <- add_known_column(scores_df)
+
+      plot_matthews_max(scores_df,
+        injection_types,
+        scoring_methods,
+        info=list(sample_id=sample_id, sample_dir=sample_dir, msa=msa))
+     })
+  }
+
 }
