@@ -41,24 +41,13 @@ NORMD_PER_SEQUENCE <- paste(script_dir,
 CONVERT_FASTA_TO_TAB <- paste(script_dir,
   "opt/misc-bioinfo-scripts/convert-fasta-to-tab", sep="/")
 
-# Guidance build-in SEQ_RES_PAIR score
-GUIDANCE_ROCR <- paste(script_dir, "trial-cdd-2011-08-v2.31-uniprot-2011-08",
-"070-build-roc-classifer-data-out/predictions-guidance.Rdata", sep="/")
-
-# NorMD modified change ratio variant
-NORMD_DXMOD_ROCR <- paste(script_dir, "trial-cdd-2011-08-v2.31-uniprot-2011-08",
-"070-build-roc-classifer-data-out/predictions-normd-mod-dx.Rdata", sep="/")
 
 # How to use this script
 usage_and_quit <- function() {
   cat(paste(script_name, "is a utility for MSA alignment cleanup", "\n\n"))
-  cat(paste("Usage:", script_name, "<method> <e-mode> <in-msa>", "\n\n"))
+  cat(paste("Usage:", script_name, " <in-msa>", "\n\n"))
   cat(paste(
     "Required Arguments",
-    "  <method>  Scoring method.",
-    "            Must be: \"guidance\", \"normd_dxmod\", \"best\", \"and\", or \"or\"",
-    "  <e-mode>  Expected true keeps and removals.",
-    "            Must be: \".99tpr\" or \".99tnr\"",
     "  <in-msa>  Input multiple sequence alignment in TAB or FASTA format.",
     "",
     sep="\n"))
@@ -68,151 +57,42 @@ usage_and_quit <- function() {
 # Check number of arguments
 script_args <- commandArgs(trailingOnly=T)
 if(length(script_args) == 0) usage_and_quit()
-if(length(script_args) != 3) {
+if(length(script_args) != 1) {
   cat("ERROR: Invalid number of arguments", length(script_args), "\n")
   usage_and_quit()
 }
 
 # Get arguments
-SCORING_METHOD  <- script_args[[1]]
-MODE <- script_args[[2]]
-MSA_FASTA <- script_args[[3]]
-
-# Check arguments
-if (SCORING_METHOD != "guidance" && SCORING_METHOD != "normd_dxmod" && SCORING_METHOD != "best") {
-  cat("ERROR: Method must be \"guidance\", \"normd_dxmod\", or \"best\" got \"",
-    SCORING_METHOD, "\"\n\n", sep="")
-  usage_and_quit()
-}
-if (MODE != ".99tpr" && MODE != ".99tnr") {
-  cat("ERROR: Method must be \".99tpr\" or \".99tnr\", got \"",
-    MODE, "\"\n\n", sep="")
-  usage_and_quit()
-}
-
-# Load the ROCR object which contains previous data analysis
-library(ROCR)
-
-OUT_AS_METHOD = SCORING_METHOD
-if (SCORING_METHOD == "best") {
-  OUT_AS_METHOD = "best"
-  if (MODE == ".99tpr") {
-    SCORING_METHOD = "normd_dxmod"
-  } else {
-    SCORING_METHOD = "guidance"
-  }
-}
-
-if (SCORING_METHOD == "guidance") {
-  load(GUIDANCE_ROCR)
-  ROCR_PRED <- p_1
-} else if (SCORING_METHOD == "normd_dxmod") {
-  load(NORMD_DXMOD_ROCR)
-  ROCR_PRED <- p_5
-}
+MSA_FASTA <- script_args[[1]]
 
 
-#str(ROCR_PRED)
-#..@ predictions:List of 1
-#.. ..$ : num [1:6526] -0.000168 -0.000446 -0.000681 -0.000845 -0.001419 ...
-#..@ labels     :List of 1
-#.. ..$ : Ord.factor w/ 2 levels "0"<"1": 2 2 2 2 2 2 2 1 1 1 ...
-#..@ cutoffs    :List of 1
-#.. ..$ : num [1:3565] Inf 0.01239 0.01057 0.01032 0.00988 ...
-#..@ fp         :List of 1
-#.. ..$ : num [1:3565] 0 0 0 0 0 0 0 0 0 0 ...
-#..@ tp         :List of 1
-#.. ..$ : num [1:3565] 0 1 2 3 4 5 6 7 8 9 ...
-#..@ tn         :List of 1
-#.. ..$ : num [1:3565] 285 285 285 285 285 285 285 285 285 285 ...
-#..@ fn         :List of 1
-#.. ..$ : num [1:3565] 6241 6240 6239 6238 6237 ...
-#..@ n.pos      :List of 1
-#.. ..$ : int 6241
-#..@ n.neg      :List of 1
-#.. ..$ : int 285
-#..@ n.pos.pred :List of 1
-#.. ..$ : num [1:3565] 0 1 2 3 4 5 6 7 8 9 ...
-#..@ n.neg.pred :List of 1
 
 
-# True Positive Rate / False Positive Rate
-tpr <- performance(ROCR_PRED, 'tpr')
-fpr <- performance(ROCR_PRED, 'fpr')
-# Formal class 'performance' [package "ROCR"] with 6 slots
-#   ..@ x.name      : chr "Cutoff"
-#   ..@ y.name      : chr "True positive rate"
-#   ..@ alpha.name  : chr "none"
-#   ..@ x.values    :List of 1
-#   .. ..$ : num [1:3565] Inf 0.01239 0.01057 0.01032 0.00988 ...
-#   ..@ y.values    :List of 1
-#   .. ..$ : num [1:3565] 0 0.00016 0.00032 0.000481 0.000641 ...
-#   ..@ alpha.values: list()
-# Formal class 'performance' [package "ROCR"] with 6 slots
-#   ..@ x.name      : chr "Cutoff"
-#   ..@ y.name      : chr "False positive rate"
-#   ..@ alpha.name  : chr "none"
-#   ..@ x.values    :List of 1
-#   .. ..$ : num [1:3565] Inf 0.01239 0.01057 0.01032 0.00988 ...
-#   ..@ y.values    :List of 1
-#   .. ..$ : num [1:3565] 0 0 0 0 0 0 0 0 0 0 ...
-#   ..@ alpha.values: list()
 
 
-# Pick the desired cutoff
-tpr_cutoffs <- tpr@x.values[[1]]
-tpr_values <- tpr@y.values[[1]]
-fpr_cutoffs <- fpr@x.values[[1]]
-fpr_values <- fpr@y.values[[1]]
-if (paste(tpr_cutoffs, collapse="") != paste(fpr_cutoffs, collapse="")) {
-  cat("ERROR: Assertion that tpr_cutoffs == fpr_cutoffs failed!")
-  quit()
-}
-CUTOFF_LIST <- tpr_cutoffs
 
-if (MODE == ".99tpr") {
-  offsets <- tpr_values - .99 # Note: they remain sorted
 
-  # Implies that I'm looking for the first value greater than .99
-  CUTOFF_LOCATION <- which(offsets > 0)[[1]]
-}
-if (MODE == ".99tnr") {
-  # TNR = Specificity = 1 - FPR
-  tnr_values <- 1 - fpr_values
-  offsets <- tnr_values - .99
-
-  # Implies that I'm looking for the first value less than .99
-  positive_offsets <- which(offsets > 0)
-  CUTOFF_LOCATION <- positive_offsets[length(positive_offsets)]
-}
-
-TPR <<- tpr_values[[CUTOFF_LOCATION]]
-FPR <<- fpr_values[[CUTOFF_LOCATION]]
-
-CUTOFF <- CUTOFF_LIST[[CUTOFF_LOCATION]]
-cat("MSA ", SCORING_METHOD, " score cutoff:\t", CUTOFF, "\n", sep="")
-
-cat("+-------------------------------------------------------+\n")
-cat("| TPR = True positive rate  = Sensitivity     = 1 - FNR |\n")
-cat("| TNR = True negative rate  = Specificity     = 1 - FPR |\n")
-cat("| FPR = False positive rate = 1 - Specificity = 1 - TNR |\n")
-cat("| FNR = False negative rate = 1 - Sensitivity = 1 - TPR |\n")
-cat("+-------------------------------------------------------+\n")
-cat("Expected TPR:\t", signif(TPR, 4), "\n", sep="")
-cat("Expected TNR:\t", signif(1 - FPR, 4), "\n", sep="")
-cat("Expected FPR:\t", signif(FPR, 4), "\n", sep="")
-cat("Expected FNR:\t", signif(1 - TPR, 4), "\n", sep="")
-cat("The above expectations will hold under the follwoing conditions:\n",
-  "\n",
-  "  1. Close to 95% of the sequences of the input MSA are \n",
-  "     one of the protein groups randomly sampled from CDD v2.31 (2011-08)\n",
-  "\n",
-  "  2. Close to 5% of the sequences in the input MSA are\n",
-  "     randomly sampled from Uniprot v2011_08\n",
-  "\n",
-  "  3. The lengths of all sequences in Condition #2 are equial to\n",
-  "     the average length of the sequence group in Condition #1\n\n")
-cat("\n")
+# cat("+-------------------------------------------------------+\n")
+# cat("| TPR = True positive rate  = Sensitivity     = 1 - FNR |\n")
+# cat("| TNR = True negative rate  = Specificity     = 1 - FPR |\n")
+# cat("| FPR = False positive rate = 1 - Specificity = 1 - TNR |\n")
+# cat("| FNR = False negative rate = 1 - Sensitivity = 1 - TPR |\n")
+# cat("+-------------------------------------------------------+\n")
+# cat("Expected TPR:\t", signif(TPR, 4), "\n", sep="")
+# cat("Expected TNR:\t", signif(1 - FPR, 4), "\n", sep="")
+# cat("Expected FPR:\t", signif(FPR, 4), "\n", sep="")
+# cat("Expected FNR:\t", signif(1 - TPR, 4), "\n", sep="")
+# cat("The above expectations will hold under the follwoing conditions:\n",
+#   "\n",
+#   "  1. Close to 95% of the sequences of the input MSA are \n",
+#   "     one of the protein groups randomly sampled from CDD v2.31 (2011-08)\n",
+#   "\n",
+#   "  2. Close to 5% of the sequences in the input MSA are\n",
+#   "     randomly sampled from Uniprot v2011_08\n",
+#   "\n",
+#   "  3. The lengths of all sequences in Condition #2 are equial to\n",
+#   "     the average length of the sequence group in Condition #1\n\n")
+# cat("\n")
 
 
 OUT_DIR <- paste(MSA_FASTA, "-remover", sep="")
@@ -241,68 +121,249 @@ cat("\n")
 
 
 
-cat("Aligning and scoring...\n")
-if (SCORING_METHOD == "guidance") {
-  GUIDANCE_RESULTS_DIR <- paste(OUT_DIR, "/guidance", sep="")
-  cmd <- paste(
-    "done_time=", GUIDANCE_RESULTS_DIR, "-done\n",
-    "if [ ! -f $done_time ] || [ ", MSA_FASTA, " -nt $done_time ] ",
-    " || [ ", script_path, " -nt $done_time ] ",
-    " || [ ", NORMD_PER_SEQUENCE, " -nt $done_time ] ; then\n",
-    "  export PATH=", MAFFT_PATH, ":$PATH\n",
-    "  ", GUIDANCE_EXEC, " --msaProgram MAFFT --seqType aa",
-    " --seqFile ", PREPARED_FASTA_FILE_INPUT,
-    " --outDir ", GUIDANCE_RESULTS_DIR, 
-    " && touch ", GUIDANCE_RESULTS_DIR, "-done",
-    " && echo 'GUIDANCE finished'\n",
-    "else\n", 
-    "  echo 'Already done.'\n",
-    "fi\n",
-    sep="")
-  SH(cmd)
-
-  SEQ_SCORES <- paste(GUIDANCE_RESULTS_DIR,
-    "/MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names", sep="")
-  SCORES <- read.table(SEQ_SCORES, header=T)
-  # ALREADY AS HEADER #colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
 
 
-} else if (SCORING_METHOD == "normd_dxmod") {
-  NORMD_RESULTS <- paste(OUT_DIR, "/normd-dx1-mod-seq-scores.txt", sep="")
-  cmd <- paste(
-    "set -e\n",
-    "set -u\n",
 
-    "done_time=", NORMD_RESULTS, "-done\n",
 
-    "if [ ! -f $done_time ] || [ ", MSA_FASTA, " -nt $done_time ] ",
-    " || [ ", script_path, " -nt $done_time ] ",
-    " || [ ", NORMD_PER_SEQUENCE, " -nt $done_time ] ; then\n",
-    "  ", NORMD_PER_SEQUENCE, " ", script_dir, "/opt/ ", OUT_DIR,
-    "  && ",
-    "  touch ", NORMD_RESULTS, "-done && echo 'NORMD finished'\n",
 
-    "else\n", 
-    "  echo 'Already done.'\n",
 
-    "fi\n",
-    sep="")
-  print(SH(cmd))
+cat("Scoring with NorMD...\n")
 
-   SCORES <- read.table(NORMD_RESULTS)
-   colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
- }
- cat("\n")
- 
- cat("Removing badly aligned or unrelated sequences...\n")
- BAD_SEQUENCES <- which(SCORES[, 'SEQUENCE_SCORE'] < CUTOFF)
+NORMD_RESULTS <- paste(OUT_DIR, "/normd-dx1-mod-seq-scores.txt", sep="")
+cmd <- paste(
+  "set -e\n",
+  "set -u\n",
 
-SCORES[,'REMOVE?'] <- 'Keep'
-SCORES[BAD_SEQUENCES,'REMOVE?'] <- 'Remove'
+  "done_time=", NORMD_RESULTS, "-done\n",
 
-results <- SCORES[rev(order(SCORES[,'SEQUENCE_SCORE'])),]
+  "if [ ! -f $done_time ] || [ ", MSA_FASTA, " -nt $done_time ] ",
+  #" || [ ", script_path, " -nt $done_time ] ",
+  " || [ ", NORMD_PER_SEQUENCE, " -nt $done_time ] ; then\n",
+  "  ", NORMD_PER_SEQUENCE, " ", script_dir, "/opt/ ", OUT_DIR,
+  "  && ",
+  "  touch ", NORMD_RESULTS, "-done && echo 'NORMD finished'\n",
+
+  "else\n", 
+  "  echo 'Already done.'\n",
+
+  "fi\n",
+  sep="")
+
+print(SH(cmd))
+
+N_SCORES <- read.table(NORMD_RESULTS)
+colnames(N_SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
+
+
+
+
+
+cat("Scoring with GUIDANCE...\n")
+
+GUIDANCE_RESULTS_DIR <- paste(OUT_DIR, "/guidance", sep="")
+cmd <- paste(
+  "done_time=", GUIDANCE_RESULTS_DIR, "-done\n",
+  "if [ ! -f $done_time ] || [ ", MSA_FASTA, " -nt $done_time ] ",
+  #" || [ ", script_path, " -nt $done_time ] ",
+  " || [ ", NORMD_PER_SEQUENCE, " -nt $done_time ] ; then\n",
+  "  rm ", GUIDANCE_RESULTS_DIR, "/* 2> /dev/null && true\n",
+  "  export PATH=", MAFFT_PATH, ":$PATH\n",
+  "  ", GUIDANCE_EXEC, " --msaProgram MAFFT --seqType aa",
+  "  --seqFile ", PREPARED_FASTA_FILE_INPUT,
+  "  --outDir ", GUIDANCE_RESULTS_DIR, 
+  "  && touch ", GUIDANCE_RESULTS_DIR, "-done",
+  "  && echo 'GUIDANCE finished'\n",
+  "else\n", 
+  "  echo 'Already done.'\n",
+  "fi\n",
+  sep="")
+SH(cmd)
+
+SCORES_FILE <- paste(GUIDANCE_RESULTS_DIR,
+  "/MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names", sep="")
+G_SCORES <- read.table(SCORES_FILE, header=T)
+# ALREADY AS HEADER #colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
+
+
+
+
+
+
+cat("Determining the cutoff...\n")
+
+both <- merge(N_SCORES, G_SCORES, by="SEQUENCE_NAME")
+names(both) <- c('seqid', 'n_scr', 'g_scr')
+
+
+
+g_cutoffs <- c()
+normd_cutoffs <- c()
+
+for(sm in c("g_scr", "n_scr")) {
+
+  # Sort by score (lowest scores on the bottom)
+  both <- both[order(-both[,sm]),]
+
+  ## Choose cutoffs
+  cutoffs <- sapply(1:(nrow(both) - 1), function(i) {
+    both[i,sm]/2 + both[i+1,sm]/2
+  })
+  cutoffs <- unique(cutoffs)
+
+  # Running into one of these extreams should become
+  # obvious, but we have them here to capture all possible cutoffs
+  cutoffs <- c(max(both[,sm]) + 10, cutoffs, min(both[,sm]) - 10)
+
+  if (sm == "g_scr") {
+    g_cutoffs <<- cutoffs
+  }
+
+  if (sm == "n_scr") {
+    normd_cutoffs <<- cutoffs
+  }
+
+} # Scoring  method
+
+
+
+# Sort for easier bug hunting
+both <- both[order(-both$n_scr),]
+
+g_matt_best <- -2 # The worst theoretically possible is -1
+n_matt_best_cutoff <- NA
+g_matt_best_cutoff <- NA
+
+# Lets take NorMD the ground truth
+# but doing it the other way should be mathematically symmetrical
+sapply(normd_cutoffs, function(normd_cutoff) {
+
+  m_df <-
+  sapply(g_cutoffs, function(g_cutoff) {
+    # "True" positives
+    predicted_positive <- both[both$g_scr > g_cutoff,]
+    tp <- length(which(predicted_positive$n_scr > normd_cutoff))
+
+    # "True" negatives
+    predicted_negative <- both[both$g_scr < g_cutoff,]
+    tn <- length(which(predicted_negative$n_scr < normd_cutoff))
+
+    # "False" positives
+    fp <- length(which(predicted_positive$n_scr < normd_cutoff))
+    
+    # "False" negatives
+    fn <- length(which(predicted_negative$n_scr > normd_cutoff))
+
+    # Historic 2011-09-19 used to be sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
+    m <- ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
+
+    # Order of these two matters
+    m[fp == 0 & fn == 0] <- 2  # 2x best
+    m[tp == 0 | tn == 0] <- -1 # worst
+    m[-Inf] <- -1 # worst if fp*fn is greater than tp*tn
+
+    #if (tp == 0 || tn == 0) m <- -1 # worst
+    #if (fp == 0 && fn == 0) m <- 2  # 2x best
+
+    list(counts=paste(tp,tn,fp,fn, sep="-"), matthews=m)
+  })
+  m_df <- as.data.frame(t(m_df))
+  matthews_per_each_g_cutoff <- as.numeric(m_df$matthews)
+
+  #print(g_cutoffs)
+  matthews_per_each_g_cutoff[
+   is.na(matthews_per_each_g_cutoff)] <- -2
+
+  # Local
+  max_matt <- max(matthews_per_each_g_cutoff)
+  max_matt_g_cutoff <- 
+    g_cutoffs[which(matthews_per_each_g_cutoff ==
+    max_matt)]
+
+  # Global
+  if (max_matt >= g_matt_best[[1]]) {
+    if (max_matt > g_matt_best[[1]]) {
+      # Strictly better? Overwrites the current best-record!
+      g_matt_best <<- max_matt
+      n_matt_best_cutoff <<- normd_cutoff
+      g_matt_best_cutoff <<- max_matt_g_cutoff
+    } else {
+      # Save all co-optimals
+
+      # Do not add cuts that are on the extremes (untested, too rare)
+      if (length(which(normd_cutoff < both$n_scr)) != 0 &&
+          length(which(normd_cutoff > both$n_scr)) != 0 &&
+          length(which(max_matt_g_cutoff > both$g_scr)) != 0 &&
+          length(which(max_matt_g_cutoff < both$g_scr)) != 0) {
+
+          g_matt_best <<- 
+            c(g_matt_best, max_matt)
+          n_matt_best_cutoff <<-
+            c(n_matt_best_cutoff, normd_cutoff)
+          g_matt_best_cutoff <<-
+            c(g_matt_best_cutoff, max_matt_g_cutoff)
+      }
+    }
+  }
+
+  ## ++++++++++ bug search / check +++++++++++++
+  print(both)
+  cat("NorMD cutoff", normd_cutoff, "\n")
+  print(as.numeric(m_df$matthews))
+  print(as.character(m_df$counts))
+  cat("Guidance M. best cutoff: ")
+  print(g_matt_best_cutoff)
+  cat("NorMD M. best cutoff: ")
+  print(n_matt_best_cutoff)
+  cat("+++++++++++++++++++++++++++++++++++++\n")
+
+})
+
+
+
+
+cat("Checking for co-optinal solutions...\n")
+if (length(g_matt_best) > 1) {
+  print("Co-optimal solution!")
+  print(g_matt_best)
+  print(g_matt_best_cutoff)
+  print(n_matt_best_cutoff)
+
+  # Precondition: there are no co-optimal cuts on the extremes
+  closest_score <-
+    sapply(n_matt_best_cutoff, function(i){
+      # first one that's less
+      both$n_scr[both$n_scr < i][[1]]
+    })
+  cut_gaps <- n_matt_best_cutoff - closest_score
+  where_the_winner_is <- which(cut_gaps == max(cut_gaps))
+
+  if (length(where_the_winner_is) != 1) {
+    write("ERROR: Cannot descide among co-optimal solutions!\n",stderr())
+    quit()
+  }
+
+  g_matt_best        <- g_matt_best[[where_the_winner_is]]
+  g_matt_best_cutoff <- g_matt_best_cutoff[[where_the_winner_is]]
+  n_matt_best_cutoff <- n_matt_best_cutoff[[where_the_winner_is]]
+}
+
+CUTOFF <- n_matt_best_cutoff
+
+cat("NorMD Matthew's coefficient maximization Cutoff:\t", CUTOFF, "\n", sep="")
+
+
+
+
+cat("\n")
+cat("Removing badly aligned or unrelated sequences...\n")
+BAD_SEQUENCES <- which(both[, 'n_scr'] < CUTOFF)
+
+both[,'REMOVE?'] <- 'Keep'
+both[BAD_SEQUENCES,'REMOVE?'] <- 'Remove'
+
+results <- both[rev(order(both[,'n_scr'])),]
 results_file <-
-  paste(OUT_DIR, "/results-", OUT_AS_METHOD, "-", MODE, ".txt", sep="")
+  paste(OUT_DIR, "/results.txt", sep="")
 
 write.table(file=results_file, results, sep="\t")
 print(results)
