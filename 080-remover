@@ -114,7 +114,7 @@ if (ncol(read.table(MSA_FASTA, sep="\t")) == 2) { # fasta-TAB format detection
 SH(paste("cat ", OUT_DIR, "/msa-fasta-tab.txt | tr -d '-' >",
   OUT_DIR, "/msa-fasta-tab-nogaps.txt && echo 'Remove gaps OK'", sep=""))
 SH(paste("cat ", OUT_DIR, "/msa-fasta-tab-nogaps.txt | ",
-  "awk '{print \">\" $1 \"\\n\" $2}' >", PREPARED_FASTA_FILE_INPUT,
+  "awk -F\"\t\" '{print \">\" $1 \"\\n\" $2}' >", PREPARED_FASTA_FILE_INPUT,
   " && echo 'Convert back to fasta OK'",
   sep=""))
 
@@ -151,7 +151,7 @@ cmd <- paste(
 
 print(SH(cmd))
 
-N_SCORES <- read.table(NORMD_RESULTS)
+N_SCORES <- read.table(NORMD_RESULTS, sep="\t")
 colnames(N_SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
 
 
@@ -163,6 +163,9 @@ cat("Scoring with GUIDANCE...\n")
 
 GUIDANCE_RESULTS_DIR <- paste(OUT_DIR, "/guidance", sep="")
 cmd <- paste(
+  "set -e\n",
+  "set -u\n",
+
   "done_time=", GUIDANCE_RESULTS_DIR, "-done\n",
   "if [ ! -f $done_time ] || [ ", MSA_FASTA, " -nt $done_time ] ",
   #" || [ ", script_path, " -nt $done_time ] ",
@@ -180,22 +183,33 @@ cmd <- paste(
   sep="")
 SH(cmd)
 
-SCORES_FILE <- paste(GUIDANCE_RESULTS_DIR,
+G_SCORES_FILE <- paste(GUIDANCE_RESULTS_DIR,
   "/MSA.MAFFT.Guidance_res_pair_seq.scr_with_Names", sep="")
-G_SCORES <- read.table(SCORES_FILE, header=T)
+G_SCORES <- read.table(G_SCORES_FILE, sep="\t", header=T)
 # ALREADY AS HEADER #colnames(SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
 
 
+
+cat("\n")
+cat("Merging the two score tables...\n")
+
+# GUIDANCE keeps all words of the FASTA descriptor
+# NorMD keeps only the first word
+# Common denominator: first word only
+splits <- strsplit(as.character(G_SCORES$SEQUENCE_NAME), ' ')
+G_SCORES$SEQUENCE_NAME <- sapply(splits, function(x) x[[1]])
+
+
+both <- merge(N_SCORES, G_SCORES, by="SEQUENCE_NAME")
+names(both) <- c('seqid', 'n_scr', 'g_scr')
+
+print(both)
 
 
 
 
 cat("\n")
 cat("Determining the cutoff...\n")
-
-both <- merge(N_SCORES, G_SCORES, by="SEQUENCE_NAME")
-names(both) <- c('seqid', 'n_scr', 'g_scr')
-
 
 
 g_cutoffs <- c()
