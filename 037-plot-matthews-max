@@ -262,9 +262,13 @@ plot_matthews_max <- function(scores_df, injection_types,
       #subject_scr <- "n_scr"
       #subject_cutoffs <- n_cutoffs
 
-      bt_matt_best_cutoff <- NA
-      subject_matt_best <- -2 # The worst theoretically possible is -1 othewise
-      subject_matt_best_cutoff <- NA
+      # NOTE: The worst Matthews correlation coefficient is -1 by definition
+      # NOTE: matt_max may have multiple rows due to co-optimal solutions
+      # NOTE: Coeff in matt_max data frame will be the same in all rows
+      #bt_matt_best_cutoff <- -1000
+      #subject_matt_best_cutoff <- -1000
+      max_matt_df <-
+        data.frame(coeff=-2, subject_cutoff=-1000, bt_cutoff=-1000)
 
       # Sort for easier bug hunting
       both <- both[order(-both[,subject_scr]),]
@@ -313,16 +317,15 @@ plot_matthews_max <- function(scores_df, injection_types,
           max_matt)]
 
         # Global
-        if (max_matt >= subject_matt_best[[1]]) {
-          if (max_matt > subject_matt_best[[1]]) {
+        if (max_matt >= max_matt_df$coeff[[1]]) {
+          if (max_matt > max_matt_df$coeff[[1]]) {
             # Strictly better? Overwrites the current best-record!
-            subject_matt_best <<- max_matt
-            bt_matt_best_cutoff <<- bt_cutoff
-            subject_matt_best_cutoff <<- max_matt_subject_cutoff
-          } else {
-            # Save all co-optimals
+            max_matt_df <<- data.frame(coefficient=max_matt,
+              subject_cutoff=max_matt_subject_cutoff, bt_cutoff=bt_cutoff)
 
-            # Do not add cuts that are on the extremes (untested, too rare)
+          } else { # Do not throw away co-optimals
+
+            # Do not add cuts that are on the extremes. TODO: Test this
             if (length(which(bt_cutoff < both[,base_truth_scr])) != 0 &&
                 length(which(bt_cutoff > both[,base_truth_scr])) != 0 &&
                 length(which(max_matt_subject_cutoff >
@@ -330,55 +333,92 @@ plot_matthews_max <- function(scores_df, injection_types,
                 length(which(max_matt_subject_cutoff <
                   both[,subject_scr])) != 0) {
 
-                subject_matt_best <<- 
-                  c(subject_matt_best, max_matt)
-                bt_matt_best_cutoff <<-
-                  c(bt_matt_best_cutoff, bt_cutoff)
-                subject_matt_best_cutoff <<-
-                  c(subject_matt_best_cutoff, max_matt_subject_cutoff)
+              print("Right before rbind")
+              print(max_matt)
+              print(max_matt_subject_cutoff)
+              print(bt_cutoff)
+              for (sub_cutoff_i in max_matt_subject_cutoff) {
+                max_matt_df <<- rbind(max_matt_df,
+                  list(coefficient=max_matt, subject_cutoff=sub_cutoff_i,
+                       bt_cutoff=bt_cutoff)
+                )
+              }
             }
           }
         }
 
         ## ++++++++++ bug search / check +++++++++++++
         print(both)
-        cat("Base truth (NorMD) cutoff", bt_cutoff, "\n")
+        cat("Base truth (", base_truth_scr, ") cutoff: ", bt_cutoff, "\n")
 	print(as.numeric(m_df$matthews))
 	print(as.character(m_df$counts))
-        cat("Guidance M. best cutoff: ")
-        print(subject_matt_best_cutoff)
-        cat("NorMD M. best cutoff: ")
-        print(bt_matt_best_cutoff)
+
+        cat("Base truth (", base_truth_scr, ") max matt cutoff: ",
+          max_matt_df$bt_cutoff, "\n")
+        cat("Subject (", subject_scr, ") max matt cutoff: ",
+          max_matt_df$subject_cutoff, "\n")
+
         print("+++++++++++++++++++++++++++++++++++++")
 
       })
 
 
-      # Handle co-optinal solutions
-      if (length(subject_matt_best) > 1) {
-        print("Co-optimal solution!")
-        print(subject_matt_best)
-        print(subject_matt_best_cutoff)
-        print(bt_matt_best_cutoff)
 
+      # Handle co-optinal solutions for Subject and
+      # Handle co-optinal solutions for Base-Truth (BT) separatly!
+
+      # (A) Subject
+      # Precondition: there are no co-optimal cuts on the extremes
+
+      if (length(max_matt_df$subject_cutoff) > 1) {
+        print("Co-optimal solution!")
+        print("max_matt_df")
+        print(max_matt_df)
+
+        # Get nearest score
+	subject_closest_score <-
+          sapply(max_matt_df$subject_cutoff, function(i){
+            # first cutoff that's less
+            both[,subject_scr][both[,subject_scr] < i][[1]]
+          })
+
+        print(subject_closest_score)
+        subject_cut_gaps <- max_matt_df$subject_cutoff - subject_closest_score
+        subject_winner_loc <- which(subject_cut_gaps == max(subject_cut_gaps))
+
+        # Could still have more than 1 rows 
+        max_matt_df <- max_matt_df[subject_winner_loc,]
+      }
+
+
+      #  # (B) Base truth
+      if (length(max_matt_df$bt_cutoff) > 1) {
         # Precondition: there are no co-optimal cuts on the extremes
-	closest_score <-
-          sapply(bt_matt_best_cutoff, function(i){
+
+        # Get nearest score
+        bt_closest_score <- sapply(max_matt_df$bt_cutoff, function(i){
             # first one that's less
             both[,base_truth_scr][both[,base_truth_scr] < i][[1]]
           })
-        cut_gaps <- bt_matt_best_cutoff - closest_score
-        where_the_winner_is <- which(cut_gaps == max(cut_gaps))
 
-        if (length(where_the_winner_is) != 1) {
-          write("ERROR: Cannot descide among co-optimal solutions!\n",stderr())
-          quit()
+        print(bt_closest_score)
+        bt_cut_gaps <- max_matt_df$bt_cutoff - bt_closest_score
+        bt_winner_loc <- which(bt_cut_gaps == max(bt_cut_gaps))
+
+        if (length(bt_winner_loc) != 1) {
+          print("bt_closest_score, bt_cut_gaps, bt_winner_loc")
+          print(bt_closest_score)
+          print(bt_cut_gaps)
+          print(bt_winner_loc)
+          write("WARNING: Cannot deicide among co-optimal solutions!\n",
+            stderr())
+ 
+          bt_winner_loc <- bt_winner_loc[[1]]
         }
 
-        subject_matt_best        <- subject_matt_best[[where_the_winner_is]]
-        subject_matt_best_cutoff <- subject_matt_best_cutoff[[where_the_winner_is]]
-        bt_matt_best_cutoff <- bt_matt_best_cutoff[[where_the_winner_is]]
+        max_matt_df <- max_matt_df[bt_winner_loc,]
       }
+
 
 
       #quit() # Debug 1 msa
@@ -395,7 +435,8 @@ plot_matthews_max <- function(scores_df, injection_types,
         rbind(mini_df, 
           data.frame(
             Injection_Type=signif(injection_type, 2),
-            Max_Matt_Cutoff=bt_matt_best_cutoff,
+            Max_Matt_Cutoff=max_matt_df$bt_cutoff,
+
             Scoring_Method=factor(base_truth_scoring_method,
               levels=scoring_methods),
             Ground_Truth="Ab Initio"
@@ -406,7 +447,8 @@ plot_matthews_max <- function(scores_df, injection_types,
         rbind(mini_df, 
           data.frame(
             Injection_Type=signif(injection_type, 2),
-            Max_Matt_Cutoff=subject_matt_best_cutoff,
+            Max_Matt_Cutoff=max_matt_df$subject_cutoff,
+
             Scoring_Method=factor(subject_scoring_method,
               levels=scoring_methods),
             Ground_Truth="Ab Initio"
@@ -477,8 +519,10 @@ for(sample_file in SAMPLE_FILES) {
   # All alignent in the sample
   msa_list <- sort(as.character(unique(scores_df[,'msa'])))
 
-  for(msa in c("PRK04885")) {
-  #for(msa in msa_list) {
+  #for(msa in c("COG2009")) {
+  #for(msa in c("COG0555")) {
+  #for(msa in c("PRK04885")) {
+  for(msa in msa_list) {
     local({
       scores_df <- scores_df[scores_df[,'msa'] == msa,]
 
@@ -488,23 +532,27 @@ for(sample_file in SAMPLE_FILES) {
       #
       injection_types_here <-
         as.numeric(sort(unique(as.character(scores_df[,'rand']))))
-      non_existing_injection_types <- setdiff(injection_types, injection_types_here)
+      non_existing_injection_types <-
+        setdiff(injection_types, injection_types_here)
 
 
       #
       # Check that all scoring methods exists
       #
       scoring_methods_here <- sort(as.character(unique(scores_df[,'method'])))
-      non_existing_scoring_methods <- setdiff(scoring_methods_here,scoring_methods)
+      non_existing_scoring_methods <-
+        setdiff(scoring_methods_here,scoring_methods)
 
 
       if (length(non_existing_injection_types) > 0) {
         write(paste("WARNING: Rand", non_existing_injection_types,
-          " does not exist for MSA ", msa, " in ", sample_dir, sep=""), stderr())
+          " does not exist for MSA ", msa, " in ", sample_dir, sep=""),
+          stderr())
 
       } else if (length(non_existing_scoring_methods) > 0) {
          write(paste("WARNING: Rand", non_existing_scoring_methods,
-           " does not exist for MSA ", msa, " in ", sample_dir, sep=""), stderr())
+           " does not exist for MSA ", msa, " in ", sample_dir, sep=""),
+           stderr())
 
       } else {
 
