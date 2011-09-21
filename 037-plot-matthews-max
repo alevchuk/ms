@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# UNNAMED is a classifier of outlier sequences in multiple alignments
+# GROUPBALANCER is a classifier of outlier sequences in multiple alignments
 # Copyright (C) 2011  Aleksandr Levchuk
 #
 # This program is free software: you can redistribute it and/or modify
@@ -118,7 +118,7 @@ plot_matthews_max <- function(scores_df, injection_types,
 
       both <- data.frame()
       g_cutoffs <- c()
-      normd_cutoffs <- c()
+      n_cutoffs <- c()
 
       for(scoring_method in scoring_methods) {
         local({
@@ -159,7 +159,7 @@ plot_matthews_max <- function(scores_df, injection_types,
             both <<- merge(both, scores_df[,c('seqid', 'scr')])
             names(both)[names(both) == 'scr'] <<- 'n_scr'
 
-            normd_cutoffs <<- cutoffs
+            n_cutoffs <<- cutoffs
           } 
 
           # True positives
@@ -200,11 +200,13 @@ plot_matthews_max <- function(scores_df, injection_types,
             ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
           #matthews[is.na(matthews) | matthews == Inf | matthews == -Inf] <- 0
 
-          # Order of these two matters
+          # Order of next 2 lines matters
           m[fp == 0 & fn == 0] <- 2  # 2x best
-          m[tp == 0 | tn == 0] <- -1 # worst # TODO: In extreams allow tn=0 or tp=0
-                                     #               but pay attemtion to cut gaps?
+          m[tp == 0 | tn == 0] <- -1 # worst
+
           m[-Inf] <- -1 # worst if fp*fn is greater than tp*tn
+          # TODO: In extreams allow tn=0 xor tp=0
+          #   but there cut gaps may be a problem
 
           matthews <- m
           mmax <- max(matthews)
@@ -237,34 +239,52 @@ plot_matthews_max <- function(scores_df, injection_types,
 
       # ------------------------------------------------------------
 
+      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      # Lets take NorMD the base truth
+      # but taking Guidance should be mathematically symmetrical
+      # and results would be identical.
+      # Hint: Easy way to test for bugs
+      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+      base_truth_scoring_method <- "normd_dx_mod_seq_scr"
+      base_truth_scr <- "n_scr"
+      base_truth_cutoffs <- n_cutoffs
+
+      subject_scoring_method <- "guidance_seq_scr"
+      subject_scr <- "g_scr"
+      subject_cutoffs <- g_cutoffs
+
+      #base_truth_scoring_method <- "guidance_seq_scr"
+      #base_truth_scr <- "g_scr"
+      #base_truth_cutoffs <- g_cutoffs
+
+      #subject_scoring_method <- "normd_dx_mod_seq_scr"
+      #subject_scr <- "n_scr"
+      #subject_cutoffs <- n_cutoffs
+
+      bt_matt_best_cutoff <- NA
+      subject_matt_best <- -2 # The worst theoretically possible is -1 othewise
+      subject_matt_best_cutoff <- NA
 
       # Sort for easier bug hunting
-      both <- both[order(-both$n_scr),]
-
-      g_matt_best <- -2 # The worst theoretically possible is -1
-      n_matt_best_cutoff <- NA
-      g_matt_best_cutoff <- NA
-
-      # Lets take NorMD the ground truth
-      # but doing it the other way should be mathematically symmetrical
-      sapply(normd_cutoffs, function(normd_cutoff) {
+      both <- both[order(-both[,subject_scr]),]
+      sapply(base_truth_cutoffs, function(bt_cutoff) {
 
         m_df <-
-        sapply(g_cutoffs, function(g_cutoff) {
+        sapply(subject_cutoffs, function(subject_cutoff) {
           # "True" positives
-          predicted_positive <- both[both$g_scr > g_cutoff,]
-          tp <- length(which(predicted_positive$n_scr > normd_cutoff))
+          predicted_positive <- both[both[,subject_scr] > subject_cutoff,]
+          tp <- length(which(predicted_positive[,base_truth_scr] > bt_cutoff))
 
           # "True" negatives
-          predicted_negative <- both[both$g_scr < g_cutoff,]
-          tn <- length(which(predicted_negative$n_scr < normd_cutoff))
+          predicted_negative <- both[both[,subject_scr] < subject_cutoff,]
+          tn <- length(which(predicted_negative[,base_truth_scr] < bt_cutoff))
 
           # "False" positives
-          fp <- length(which(predicted_positive$n_scr < normd_cutoff))
+          fp <- length(which(predicted_positive[,base_truth_scr] < bt_cutoff))
           
           # "False" negatives
-          fn <- length(which(predicted_negative$n_scr > normd_cutoff))
+          fn <- length(which(predicted_negative[,base_truth_scr] > bt_cutoff))
 
           # Historic 2011-09-19 used to be sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
           m <- ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
@@ -280,72 +300,74 @@ plot_matthews_max <- function(scores_df, injection_types,
           list(counts=paste(tp,tn,fp,fn, sep="-"), matthews=m)
         })
         m_df <- as.data.frame(t(m_df))
-        matthews_per_each_g_cutoff <- as.numeric(m_df$matthews)
+        matthews_per_each_subject_cutoff <- as.numeric(m_df$matthews)
 
-        #print(g_cutoffs)
-        matthews_per_each_g_cutoff[
-         is.na(matthews_per_each_g_cutoff)] <- -2
+        #print(subject_cutoffs)
+        matthews_per_each_subject_cutoff[
+         is.na(matthews_per_each_subject_cutoff)] <- -2
 
         # Local
-        max_matt <- max(matthews_per_each_g_cutoff)
-        max_matt_g_cutoff <- 
-          g_cutoffs[which(matthews_per_each_g_cutoff ==
+        max_matt <- max(matthews_per_each_subject_cutoff)
+        max_matt_subject_cutoff <- 
+          subject_cutoffs[which(matthews_per_each_subject_cutoff ==
           max_matt)]
 
         # Global
-        if (max_matt >= g_matt_best[[1]]) {
-          if (max_matt > g_matt_best[[1]]) {
+        if (max_matt >= subject_matt_best[[1]]) {
+          if (max_matt > subject_matt_best[[1]]) {
             # Strictly better? Overwrites the current best-record!
-            g_matt_best <<- max_matt
-            n_matt_best_cutoff <<- normd_cutoff
-            g_matt_best_cutoff <<- max_matt_g_cutoff
+            subject_matt_best <<- max_matt
+            bt_matt_best_cutoff <<- bt_cutoff
+            subject_matt_best_cutoff <<- max_matt_subject_cutoff
           } else {
             # Save all co-optimals
 
             # Do not add cuts that are on the extremes (untested, too rare)
-            if (length(which(normd_cutoff < both$n_scr)) != 0 &&
-                length(which(normd_cutoff > both$n_scr)) != 0 &&
-                length(which(max_matt_g_cutoff > both$g_scr)) != 0 &&
-                length(which(max_matt_g_cutoff < both$g_scr)) != 0) {
+            if (length(which(bt_cutoff < both[,base_truth_scr])) != 0 &&
+                length(which(bt_cutoff > both[,base_truth_scr])) != 0 &&
+                length(which(max_matt_subject_cutoff >
+                  both[,subject_scr])) != 0 &&
+                length(which(max_matt_subject_cutoff <
+                  both[,subject_scr])) != 0) {
 
-                g_matt_best <<- 
-                  c(g_matt_best, max_matt)
-                n_matt_best_cutoff <<-
-                  c(n_matt_best_cutoff, normd_cutoff)
-                g_matt_best_cutoff <<-
-                  c(g_matt_best_cutoff, max_matt_g_cutoff)
+                subject_matt_best <<- 
+                  c(subject_matt_best, max_matt)
+                bt_matt_best_cutoff <<-
+                  c(bt_matt_best_cutoff, bt_cutoff)
+                subject_matt_best_cutoff <<-
+                  c(subject_matt_best_cutoff, max_matt_subject_cutoff)
             }
           }
         }
 
         ## ++++++++++ bug search / check +++++++++++++
         print(both)
-        cat("NorMD cutoff", normd_cutoff, "\n")
+        cat("Base truth (NorMD) cutoff", bt_cutoff, "\n")
 	print(as.numeric(m_df$matthews))
 	print(as.character(m_df$counts))
         cat("Guidance M. best cutoff: ")
-        print(g_matt_best_cutoff)
+        print(subject_matt_best_cutoff)
         cat("NorMD M. best cutoff: ")
-        print(n_matt_best_cutoff)
+        print(bt_matt_best_cutoff)
         print("+++++++++++++++++++++++++++++++++++++")
 
       })
 
 
       # Handle co-optinal solutions
-      if (length(g_matt_best) > 1) {
+      if (length(subject_matt_best) > 1) {
         print("Co-optimal solution!")
-        print(g_matt_best)
-        print(g_matt_best_cutoff)
-        print(n_matt_best_cutoff)
+        print(subject_matt_best)
+        print(subject_matt_best_cutoff)
+        print(bt_matt_best_cutoff)
 
         # Precondition: there are no co-optimal cuts on the extremes
 	closest_score <-
-          sapply(n_matt_best_cutoff, function(i){
+          sapply(bt_matt_best_cutoff, function(i){
             # first one that's less
-            both$n_scr[both$n_scr < i][[1]]
+            both[,base_truth_scr][both[,base_truth_scr] < i][[1]]
           })
-        cut_gaps <- n_matt_best_cutoff - closest_score
+        cut_gaps <- bt_matt_best_cutoff - closest_score
         where_the_winner_is <- which(cut_gaps == max(cut_gaps))
 
         if (length(where_the_winner_is) != 1) {
@@ -353,9 +375,9 @@ plot_matthews_max <- function(scores_df, injection_types,
           quit()
         }
 
-        g_matt_best        <- g_matt_best[[where_the_winner_is]]
-        g_matt_best_cutoff <- g_matt_best_cutoff[[where_the_winner_is]]
-        n_matt_best_cutoff <- n_matt_best_cutoff[[where_the_winner_is]]
+        subject_matt_best        <- subject_matt_best[[where_the_winner_is]]
+        subject_matt_best_cutoff <- subject_matt_best_cutoff[[where_the_winner_is]]
+        bt_matt_best_cutoff <- bt_matt_best_cutoff[[where_the_winner_is]]
       }
 
 
@@ -364,17 +386,18 @@ plot_matthews_max <- function(scores_df, injection_types,
       # Historic 2011-09-18
       ### For how many seqences do we agree to keep
       #agreement <- length(intersect(
-      #  both[both$g_scr > g_matt_best_cutoff, 'seqid'],
-      #  both[both$n_scr > n_matt_best_cutoff, 'seqid'])) ** 2
+      #  both[both[subject_scr,] > subject_matt_best_cutoff, 'seqid'],
+      #  both[both[base_truth_scr,] > bt_matt_best_cutoff, 'seqid'])) ** 2
       
-      #print(g_matt_best)
+      #print(subject_matt_best)
 
       mini_df <<-
         rbind(mini_df, 
           data.frame(
             Injection_Type=signif(injection_type, 2),
-            Max_Matt_Cutoff=g_matt_best_cutoff,
-            Scoring_Method=factor("guidance_seq_scr", levels=scoring_methods),
+            Max_Matt_Cutoff=bt_matt_best_cutoff,
+            Scoring_Method=factor(base_truth_scoring_method,
+              levels=scoring_methods),
             Ground_Truth="Ab Initio"
         )
       )
@@ -383,8 +406,8 @@ plot_matthews_max <- function(scores_df, injection_types,
         rbind(mini_df, 
           data.frame(
             Injection_Type=signif(injection_type, 2),
-            Max_Matt_Cutoff=n_matt_best_cutoff,
-            Scoring_Method=factor("normd_dx_mod_seq_scr",
+            Max_Matt_Cutoff=subject_matt_best_cutoff,
+            Scoring_Method=factor(subject_scoring_method,
               levels=scoring_methods),
             Ground_Truth="Ab Initio"
         )
@@ -454,8 +477,8 @@ for(sample_file in SAMPLE_FILES) {
   # All alignent in the sample
   msa_list <- sort(as.character(unique(scores_df[,'msa'])))
 
-  #for(msa in c("cd07091")) {
-  for(msa in msa_list) {
+  for(msa in c("PRK04885")) {
+  #for(msa in msa_list) {
     local({
       scores_df <- scores_df[scores_df[,'msa'] == msa,]
 
