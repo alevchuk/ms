@@ -460,7 +460,8 @@ plot_matthews_max <- function(scores_df, injection_types,
   } # Injection Type
 
   #print(mini_df)
-  write.table(mini_df, file=cutoffs_outfile, sep="\t", append=T)
+  write.table(cbind(mini_df, info$msa), file=cutoffs_outfile, sep="\t",
+    append=T, row.names=F, col.names=F)
   flush(cutoffs_outfile)
 
   # Plot Matthews 
