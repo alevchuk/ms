@@ -407,7 +407,9 @@ plot_matthews_max <- function(scores_df, injection_types,
        geom_point() + scale_size(legend = FALSE) +
        geom_line(alpha=.5, size=3) +
        facet_grid(Scoring_Method ~ ., scales = "free") +
-       theme_min(size=18) 
+       theme_min(size=18) +
+       opts(title=paste("MSA", info$msa))
+
     #geom_line() + geom_point() + opts(title=scoring_method)
 
   print(g)
