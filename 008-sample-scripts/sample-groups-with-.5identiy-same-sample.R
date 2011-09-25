@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+options(width=10000)
 
 source("opt/bio3d/R/read.fasta.R")
 source("opt/bio3d/R/pairwise.R")
@@ -72,32 +72,77 @@ for (x in 1:nrow(all)) {
   # All-agains-all % identity matrix
   aaa_id <- identity(msa)
 
-  # Pull out the desired seqences
+  # Step 1/2 (SELECT): Pull out the desired seqences
   hits_per_seq <- 
     apply(aaa_id, 1, function(x) length(which(x >= PID_HIT_MIN)) - 1)
     # -1 to avoid counting self
  
-  # Count how many we got 
+  # Which have at least 19 ID50 mates?
   hits <- which(hits_per_seq >= MIN_HITS)
+
+
+  aaa_id_selected <- aaa_id[hits, hits]
+
   if (length(hits) >= NUMSEQ_MIN) {
 
-    # Determine the average sequence lenght in hits
-    num_seq <- nrow(msa[hits,])
-    num_residues <- sum(apply(msa[hits,], 1, function(row) {
-      length(which(row != "-"))
-    }))
-    rounded_avr_seq_length <- round(num_residues / num_seq)
 
-    # Don't grab hits that exceed MAX_AVR_SEQLEN because then
-    # we will not be able to inject foregin sequences from Uniport
-    if (rounded_avr_seq_length <= MAX_AVR_SEQLEN) {
+    #print(aaa_id)
+    #print(msa)
+    #print(msa[hits,])
+    #quit()
 
-      hit_seq <- apply(msa[hits,], 1, paste, sep="", collapse="")
+    msa <- msa[hits,] 
 
-      sapply(names(hit_seq), function(x) {
-        # MSA_NAME	SEQ_NAME	SEQUENCE
-        cat("ID50_", candidate, "\t", x, "\t", hit_seq[x], "\n",sep="") 
-      })
+
+    # Step 2/2 (FILTER): Remove any non-id50 members
+    n <- length(hits)
+    triangle <- sapply(1:n, function(x) sapply(1:n, function(y) {x / y > 1}))
+    misses_tri <- (aaa_id_selected < PID_HIT_MIN) & triangle
+    bad_columns <- sapply(1:n, function(x) T %in% misses_tri[,x])
+
+    hits <- which(!bad_columns)
+    aaa_id_selected_and_filtered <- aaa_id_selected[hits, hits]
+
+    #print(hits)
+    #print(aaa_id)
+    #print(misses_tri)
+    #print(bad_columns)
+    #print(aaa_id_selected_and_filtered)
+    #print(msa)
+    #quit()
+
+
+    if (length(hits) >= NUMSEQ_MIN) {
+
+      #print(aaa_id)
+      #print(misses_tri)
+      #print(bad_columns)
+      #print(aaa_id_selected_and_filtered)
+      #print(msa)
+      #quit()
+
+
+
+      # Determine the average sequence lenght in hits
+      num_seq <- nrow(msa[hits,])
+      num_residues <- sum(apply(msa[hits,], 1, function(row) {
+        length(which(row != "-"))
+      }))
+      rounded_avr_seq_length <- round(num_residues / num_seq)
+
+      # Don't grab hits that exceed MAX_AVR_SEQLEN because then
+      # we will not be able to inject foregin sequences from Uniport
+      if (rounded_avr_seq_length <= MAX_AVR_SEQLEN) {
+
+        hit_seq <- apply(msa[hits,], 1, paste, sep="", collapse="")
+
+        sapply(names(hit_seq), function(x) {
+          # MSA_NAME	SEQ_NAME	SEQUENCE
+          cat("ID50_", candidate, "\t", x, "\t", hit_seq[x], "\n",sep="") 
+        })
+      }
+
+
     }
   }
 

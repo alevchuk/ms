@@ -24,8 +24,9 @@ set -u
 # Tags: takes-optional-arguments
 
 SAMPLING_SCRIPT=$0-scripts/sample.R
-#SAMPLING_SCRIPT2=$0-scripts/sample-groups-with-.5identiy.R
-SAMPLING_SCRIPT3=$0-scripts/sample-groups-with-.5identiy-same-sample.R
+SAMPLING_SCRIPT2=$0-scripts/sample-groups-with-.5identiy-same-sample.R
+
+
 MSA_DIMENTIONS_SCRIPT=$0-scripts/msa-dimentions.rb
  
 if [ $# != 2 ] && [ $# != 3 ]; then
@@ -96,11 +97,11 @@ done
 # Sampling with fishing and extracting seqeunce groups with 50% identity
 for seed in `seq $N`; do
   upstream="sample-size$SAMPLE_SIZE-id$seed-list"
-  sample_list="sample-size$SAMPLE_SIZE-id70$seed-list"
+  sample_list="sample-size$SAMPLE_SIZE-id50$seed-list"
   function callback {
     mkdir -p "$DATA_OUT/$sample_list-tab-new" 2> /dev/null && true
 
-    $SAMPLING_SCRIPT3 \
+    $SAMPLING_SCRIPT2 \
       $DATA_OUT/$upstream \
       $UPSTREAM_DATA/all-alignments-tab/ \
      > \
