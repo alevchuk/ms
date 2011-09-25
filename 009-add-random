@@ -98,7 +98,8 @@ function callback {
 
 
 
-for samplefile in "$UPSTREAM_DATA_SAMPLES/sample-size$SAMPLE_SIZE-id5"*"-list"; do
+for samplefile in "$UPSTREAM_DATA_SAMPLES/sample-size$SAMPLE_SIZE-id"*"-list"
+do
 
   for desired_rand_ratio in $DESIRED_RATIOS; do
     echo $desired_rand_ratio 2>&2
