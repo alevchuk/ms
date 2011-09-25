@@ -65,5 +65,11 @@ seq_file <-
   paste(UNIPROT_PREFIX, "/", "length", length_in_filename, "-tab", sep="")
 population <- readLines(seq_file)
 
+# Avoid sequences with amino-acids O and U
+# the aligner (MAFFT) will fails on those.
+# Alternatives would be: to use --anysymbol in MAFFT or replace [OU] with X
+population <- 
+  population[setdiff(seq(length(population)), grep("[OU]",population))]
+
 set.seed(SEED)
 writeLines(sample(population, sample_size))

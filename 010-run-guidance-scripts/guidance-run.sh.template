@@ -54,6 +54,8 @@ function callback {
     --seqFile $DATA_IN_FASTA_FILE --outDir $RAM_DIR &> \
     $RAM_DIR/stdouterr.log
 
+  ##--MSA_Param --anysymbol \  # Don't segfault on unusual symbols like O
+
   # Error out if the score file was not created
   ls $RAM_DIR/MSA.MAFFT.Guidance_msa.scr > /dev/null
 

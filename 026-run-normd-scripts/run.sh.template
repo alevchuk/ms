@@ -53,6 +53,10 @@ mkdir -p $DATA_OUT-new
 # Align
 msa_fasta=$RAM_DIR/msa-mafft-fasta.txt
 $MAFFT_PATH/mafft  --reorder --amino  --quiet $seq_group_fasta > $msa_fasta
+#$MAFFT_PATH/mafft \
+#  --anysymbol \  # Don't segfault on unusual symbols like O
+#  --reorder --amino  --quiet $seq_group_fasta > $msa_fasta
+
 msa_tab=$msa_fasta-tab.txt
 cat $msa_fasta | $CONVERT_FASTA_TO_TAB > $msa_tab
 
