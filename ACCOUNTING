@@ -1,0 +1,81 @@
+3 samples of 100
+################
+
+		Num Alignments	
+sample-id1	100		
+sample-id2      100             
+sample-id3      100             
+sample-id501    18              
+sample-id502    17              
+sample-id503    25              
+
+		NumSeq Orig.	NumSeq 5%	NumSeq 10%	NumSeq 15%
+sample-id1	5782		6041		6378		6753
+sample-id2	5967    	6236		6585            6977
+sample-id3	5584    	5835		6158            6519
+sample-id501	 851     	 888		 939             994
+sample-id502	 697     	 728		 768             813
+sample-id503	1299    	1357		1433            1516
+
+		NumSeq 20%	NumSeq 25%
+sample-id1	7191		7676
+sample-id2      7424		7919
+sample-id3      6942		7412
+sample-id501    1057		1129
+sample-id502     864		 923
+sample-id503    1618		1724
+
+
+		Min NumSeq Orig	Max NumSeq Orig Avr NumSeq Orig 
+sample-id1	19		187		57.82
+sample-id2      19              182             59.67
+sample-id3      19              186             55.84
+sample-id501    19               94             47.28
+sample-id502    19               92             41.0
+sample-id503    20              124             51.96
+
+		Min NumSeq 5%	Max NumSeq 5%	Avr NumSeq 5%
+sample-id1	20		196		60.41
+sample-id2      20              191             62.36
+sample-id3      20              195             58.35
+sample-id501    20               98             49.33
+sample-id502    20               96             42.82
+sample-id503    21              130             54.28
+
+		Min NumSeq 10%	Max NumSeq 10%	Avr NumSeq 10%
+sample-id1	21		207		63.78
+sample-id2      21              202		65.85
+sample-id3      21              206		61.58
+sample-id501    21              104		52.16
+sample-id502    21              102		45.17
+sample-id503    22              137		57.32
+
+		Min NumSeq 15%	Max NumSeq 15%	Avr NumSeq 15%
+sample-id1	22		220		67.53
+sample-id2      22              214		69.77
+sample-id3      22              218		65.19
+sample-id501    22              110		55.22
+sample-id502    22              108		47.82
+sample-id503    23              145		60.64
+
+		Min NumSeq 20%	Max NumSeq 20%	Avr NumSeq 20%
+sample-id1	23		233		71.91
+sample-id2      23              227		74.24
+sample-id3      23              232		69.42
+sample-id501    23              117		58.72
+sample-id502    23              115		50.82
+sample-id503    25              155		64.72
+
+
+		Min NumSeq 25%	Max NumSeq 25%	Avr NumSeq 25%
+sample-id1	25		249		76.76
+sample-id2      25              242		79.19
+sample-id3      25              248		74.12
+sample-id501    25              125		62.72
+sample-id502    25              122		54.29
+sample-id503    26              165		68.96
+
+
+# for r in 0.05 0.10 0.15 0.20 0.25; do echo $r; for i in 1 2 3 501 502 503; do ls trial-cdd-2011-08-v2.31-uniprot-2011-08/008-sample-data-out/sample-size100-id$i-list-tab-rand$r-tab/*tab | xargs -n 1 wc -l | awk '{print $1}'  | ruby -e 'puts STDIN.readlines.collect{|i| i.to_i}.max'; done; echo '---------------'; done
+
+# for r in 0.05 0.10 0.15 0.20 0.25; do echo $r; for i in 1 2 3 501 502 503; do ls trial-cdd-2011-08-v2.31-uniprot-2011-08/008-sample-data-out/sample-size100-id$i-list-tab-rand$r-tab/*tab | xargs -n 1 wc -l | awk '{print $1}'  | ruby -e 'arr = STDIN.readlines.collect{|i| i.to_i}; puts arr.inject{ |sum, el| sum + el }.to_f / arr.size'; done; echo '---------------'; done
