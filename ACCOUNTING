@@ -75,7 +75,8 @@ sample-id501    25              125		62.72
 sample-id502    25              122		54.29
 sample-id503    26              165		68.96
 
+# for r in 05 10 15 20 25; do echo --------------------$r------------------; for i in 1 2 3 501 502 503; do echo -n $i " "; wc -l trial-cdd-2011-08-v2.31-uniprot-2011-08/008-sample-data-out/sample-size100-id$i-list-tab-rand0.$r-tab/*tab | grep tota; done; echo; done
 
-# for r in 0.05 0.10 0.15 0.20 0.25; do echo $r; for i in 1 2 3 501 502 503; do ls trial-cdd-2011-08-v2.31-uniprot-2011-08/008-sample-data-out/sample-size100-id$i-list-tab-rand$r-tab/*tab | xargs -n 1 wc -l | awk '{print $1}'  | ruby -e 'puts STDIN.readlines.collect{|i| i.to_i}.max'; done; echo '---------------'; done
+# for r in 05 10 15 20 25; do echo --------------------$r--------------------; for i in 1 2 3 501 502 503; do ls trial-cdd-2011-08-v2.31-uniprot-2011-08/008-sample-data-out/sample-size100-id$i-list-tab-rand0.$r-tab/*tab | xargs -n 1 wc -l | awk '{print $1}'  | ruby -e 'puts STDIN.readlines.collect{|i| i.to_i}.max'; done; echo; done
 
-# for r in 0.05 0.10 0.15 0.20 0.25; do echo $r; for i in 1 2 3 501 502 503; do ls trial-cdd-2011-08-v2.31-uniprot-2011-08/008-sample-data-out/sample-size100-id$i-list-tab-rand$r-tab/*tab | xargs -n 1 wc -l | awk '{print $1}'  | ruby -e 'arr = STDIN.readlines.collect{|i| i.to_i}; puts arr.inject{ |sum, el| sum + el }.to_f / arr.size'; done; echo '---------------'; done
+# for r in 05 10 15 20 25; do echo --------------------$r--------------------; for i in 1 2 3 501 502 503; do ls trial-cdd-2011-08-v2.31-uniprot-2011-08/008-sample-data-out/sample-size100-id$i-list-tab-rand0.$r-tab/*tab | xargs -n 1 wc -l | awk '{print $1}'  | ruby -e 'arr = STDIN.readlines.collect{|i| i.to_i}; puts arr.inject{ |sum, el| sum + el }.to_f / arr.size'; done; echo; done
