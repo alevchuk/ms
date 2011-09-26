@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# Tags: very-slow takes-almost-3-hours
+# Tags: 
 set -e
 set -u
 source ./api/pipeline.sh
@@ -322,3 +322,7 @@ done_time_prefix=$DATA_OUT
 pipeline   $upstream_done_time_prefix   $done_time_prefix \
   "Extract all per-msa and per-seq scores for all methods" \
   callback
+
+
+# Print accounting
+./$0-scripts/accounting.R $SAMPLE_SIZE
