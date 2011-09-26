@@ -59,7 +59,8 @@ MAIN_DF <- data.frame()
 
 
 # 029-collect-scores-data-out/sample-size100-id1-whole-msa-scores
-sample_list <- sh(sprintf("ls %s/sample-size%s-*-whole-msa-scores",
+#sample_list <- sh(sprintf("ls %s/sample-size%s-*-whole-msa-scores",
+sample_list <- sh(sprintf("ls %s/sample-size%s-*-seq-scores",
   UPSTREAM_DIR, SAMPLE_SIZE))
 
 sample_number <- 0
@@ -67,7 +68,9 @@ for(sample_file in sample_list) {
   sample_number <- sample_number + 1
 
   MAIN_DF <- read.table(sample_file,
-    col.names=c("score", "rand", "unused_column", "msa", "method"))
+  #  col.names=c("score", "rand", "unused_column", "msa", "method"))
+    col.names=c("score", "rand", "unused_column", "msa", "method", "seqid"),
+    header=F)
   MAIN_DF[,"unused_column"] <- NULL
 
   dir.create(OUT_DIR, showWarnings=F)
@@ -103,12 +106,13 @@ for(sample_file in sample_list) {
         #ylab="GUIDANCE Score",
         #range=0, # no outliers
         #ylim = c(1e-5,1),
-        axes=FALSE, ylab="",
+        #axes=FALSE, ylab="",
+        xaxt="n", 
         xlab="Amount of foreign residues after injection"
         #, log="y"
       )
 
-      axis(2, seq(0,1,by=0.1), las=2)
+      #axis(2, seq(0,1,by=0.1), las=2)
 
       # Random ration labels
       rr <- round((random_ratios * 100))[2:length(random_ratios)]
