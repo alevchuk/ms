@@ -32,10 +32,10 @@ script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 
 # Primary locations
 EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
-OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
+#OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 
-dir.create(OUT_DIR, showWarnings=FALSE)
+#dir.create(OUT_DIR, showWarnings=FALSE)
 
 # How to use this script
 usage_and_quit <- function() {
