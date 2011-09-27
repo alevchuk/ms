@@ -97,14 +97,34 @@ plot_score_separation <- function(scores_df, info) {
     "-rand", sprintf("%.2f", info$injection_type), "-method-", info$method,
     "-score-sep-hist.png", sep=""),
     width=500, heigh=500, type="cairo")
-  g <- ggplot(scores_df, aes(x=scr, fill=Actual))
+
+
+  g <- ggplot(scores_df, aes(x=scr)) +
+         opts(
+           axis.ticks = theme_blank(),
+           axis.text.y =  theme_blank(),
+           axis.title.y = theme_text(size=16, angle=90),
+           axis.title.x = theme_text(size=16, vjust=0.03),
+           axis.text.x = theme_text(size=16)
+         ) + xlab("Score of a seqeunce")
+
+  #, fill=Actual))
 
   if (info$method == "normd_dx_mod_seq_scr") {
     g <- g + xlim(-0.02,0.005)
     binwidth <- 0.00025
   }
 
-  g <- g + geom_histogram(binwidth=binwidth)
+  g <- g + 
+    geom_histogram(data=subset(scores_df, Actual == "Positive"),
+      fill="red", alpha = 0.6, binwidth=binwidth) 
+
+  if (info$injection_type != 0.00) {
+    g <- g +
+      geom_histogram(data=subset(scores_df, Actual == "Negative"),
+        fill="blue", alpha = 0.3, binwidth=binwidth) 
+  }
+
   print(g)
   dev.off() 
 }
