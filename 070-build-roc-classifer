@@ -28,6 +28,7 @@ EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 
 UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+dir.create(OUT_DIR, showWarnings=FALSE)
 
 # Directory where this script is located
 script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
@@ -35,7 +36,7 @@ script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 
 # How to use this script
 usage_and_quit <- function() {
-  cat(paste(script_name, " plots box plots per msa", "\n\n"))
+  cat(paste(script_name, " ", "\n\n"))
   cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
   cat(paste(
     "Required Arguments",
