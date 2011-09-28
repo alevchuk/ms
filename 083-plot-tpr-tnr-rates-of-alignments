@@ -38,37 +38,87 @@ UPSTREAM2 <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
 dir.create(OUT_DIR, showWarnings=FALSE)
 
 
+usage_and_quit <- function() {
+  cat(paste(script_name, " plots true positive/negative rates", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
+}
 
-# TODO: Sample size from command line
-SAMPLE_SIZE <- 100
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
 
-SAMPLES <-
-  SH(paste("ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "-id*-cutoffs", sep=""))
-
-SAMPLE_SCR_FILES <- SH(paste(
-  "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE, "*-seq-scores", sep=""))
-
-
-
-UPSTREAM_SAMPLES <- cbind(SAMPLES[1:3], SAMPLE_SCR_FILES[1:3])
-colnames(UPSTREAM_SAMPLES) <- c("cutoffs_file", "scores_file")
-
-print(UPSTREAM_SAMPLES)
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
 
 
+DYNAMIC_CUT_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-cutoffs",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+DYNAMIC_CUT_FILES <- t(DYNAMIC_CUT_FILES)
+rownames(DYNAMIC_CUT_FILES) <- NULL
+colnames(DYNAMIC_CUT_FILES) <- c("filename", "sample_id")
+
+
+SCORE_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE, "*-seq-scores", 
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+   sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+SCORE_FILES <- t(SCORE_FILES)
+rownames(SCORE_FILES) <- NULL
+colnames(SCORE_FILES) <- c("filename", "sample_id")
+
+
+
+UPSTREAM_SAMPLES <- merge(DYNAMIC_CUT_FILES, SCORE_FILES, by="sample_id")
+#print(UPSTREAM_SAMPLES)
+#q()
+colnames(UPSTREAM_SAMPLES) <- c("sample_id", "dynamic_cut_file", "scores_file")
+#print(UPSTREAM_SAMPLES)
+#q()
 
 library(ggplot2)
 
 
 for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
+  sample_id <- UPSTREAM_SAMPLES[sample_i, "sample_id"]
+  dynamic_cut_file <-
+    as.character(UPSTREAM_SAMPLES[sample_i, "dynamic_cut_file"])
+  scores_file <-
+    as.character(UPSTREAM_SAMPLES[sample_i, "scores_file"])
 
-  sample_df <- read.table(UPSTREAM_SAMPLES[sample_i, "cutoffs_file"])
-  names(sample_df) <- c("MSA",
-            "Injection_Type", "Max_Matt_Cutoff", "Scoring_Method", "Ground_Truth")
+  #print(dynamic_cut_file)
+  #q()
+  sample_df <- read.table(dynamic_cut_file, header=F, sep = "\t")
+
+  #print(sample_df)
+  #quit()
+
+  #        V1      V2               V3       V4         V5
+  # 1    0.05  0.0350 guidance_seq_scr Guidance  pfam11925
+  names(sample_df) <- c(
+            "Injection_Type", "Max_Matt_Cutoff", "Scoring_Method",
+            "Ground_Truth", "MSA")
   sample_df <- sample_df[sample_df$Scoring_Method == "normd_dx_mod_seq_scr",]
   sample_df <- sample_df[,names(sample_df) != "Scoring_Method"]
 
-  scores_df <- read.table(UPSTREAM_SAMPLES[sample_i, "scores_file"])
+  scores_df <- read.table(scores_file)
   colnames(scores_df) <- c('scr', 'Injection_Type', 'unused', 'MSA', 'method',
                            'seqid')
 
@@ -78,6 +128,12 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
  
   main_df <- merge(sample_df, scores_df, by=c("MSA", "Injection_Type"))
+
+
+  #print(sample_df[1:10,])
+  #print(scores_df[1:10,])
+  #print(main_df[1:10,])
+  #quit()
 
   main_df <- cbind(main_df, list(Actual="Positive"))
 
@@ -177,7 +233,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
 
 
-  png(paste(OUT_DIR, "/sample-", sample_i, "-tp-rates.png", sep=""),
+  png(paste(OUT_DIR, "/", sample_id, "-tp-rates.png", sep=""),
     width=1000, height=1000,
     type="cairo")
 
@@ -189,12 +245,13 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
 
 
-  png(paste(OUT_DIR, "/sample-", sample_i, "-tn-rates.png", sep=""),
+  png(paste(OUT_DIR, "/", sample_id, "-tn-rates.png", sep=""),
     width=1000, height=1000,
     type="cairo")
 
   g <- ggplot(sample_df, aes(x=TNR)) +
     geom_histogram(binwidth=0.01) + xlim(0,1) +
+    #facet_grid(Injection_Type ~ Ground_Truth)
     facet_grid(Injection_Type ~ Ground_Truth)
   print(g)
   dev.off() 
