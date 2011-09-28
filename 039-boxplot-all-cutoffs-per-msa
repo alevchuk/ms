@@ -81,6 +81,9 @@ for (file_id in 1:nrow(CUTOFFS_SAMPLE_FILES)) {
   # E.g.: 0.05    0.71099 "guidance_seq_scr"      "Known" "ID50_KOG0001"
   colnames(sample_df) <- c("Rand", "Cutoff", "Method", "Tracking", "MSA")
 
+
+
+  means_df <- data.frame()
   
   for(method in unique(sample_df$Method)) {
   local({
@@ -107,7 +110,6 @@ for (file_id in 1:nrow(CUTOFFS_SAMPLE_FILES)) {
   sample_df <- rbind(sample_df, new_df)
   #print(sample_df)
   #quit()
-
 
 
 
@@ -141,27 +143,35 @@ for (file_id in 1:nrow(CUTOFFS_SAMPLE_FILES)) {
 
     # Exprot medians, these will be the static cutoffs
     if (tacking == "Known") {
-      means_df <- data.frame()
       for(rand in unique(sample_df$Rand)) {
         cutoffs <- subset(sample_df, Rand == rand)$Cutoff
-        means_df <- rbind(means_df, 
-                      data.frame(Rand=as.numeric(rand), Mean=mean(cutoffs))
+        means_df <<- rbind(means_df, 
+                      data.frame(
+                        Rand=as.numeric(rand),
+                        Mean=mean(cutoffs),
+                        Method=method
+                      )
                     )
       }
-      export_file <-
-        sprintf("%s/%s-%s-tab", OUT_DIR, sample_id, method)
-      print(export_file)
-      write.table(means_df, sep="\t", row.names=F, file=export_file)
     }
 
-  })
+  }) # Tracking closes
   }
 
 
 
 
-  })
+  }) # Method closes
   }
+
+
+
+
+  export_file <-
+    sprintf("%s/%s-%s-tab", OUT_DIR, sample_id, "-static-cutoffs-tab")
+  print(export_file)
+  write.table(means_df, sep="\t", row.names=F, file=export_file)
+
 
   #  #attach(mtcars)
   #  #par(mfrow=c(2,1)) 
