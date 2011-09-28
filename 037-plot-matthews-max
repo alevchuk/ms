@@ -213,14 +213,14 @@ plot_matthews_max <- function(scores_df, injection_types,
           m_pos <- which(matthews == mmax)
           m_cutoff <- cutoffs[m_pos]
 
-          print(c(
-           #"cutoffs",
-           "matthews","mmax","m_pos", "m_cutoff"))
-          #print(cutoffs)
-          print(matthews)
-          print(mmax)
-          print(m_pos)
-          print(m_cutoff)
+          ### print(c(
+          ###  #"cutoffs",
+          ###  "matthews","mmax","m_pos", "m_cutoff"))
+          ### #print(cutoffs)
+          ### print(matthews)
+          ### print(mmax)
+          ### print(m_pos)
+          ### print(m_cutoff)
 
           mini_df <<-
             rbind(mini_df, 
@@ -333,10 +333,10 @@ plot_matthews_max <- function(scores_df, injection_types,
                 length(which(max_matt_subject_cutoff <
                   both[,subject_scr])) != 0) {
 
-              print("Right before rbind")
-              print(max_matt)
-              print(max_matt_subject_cutoff)
-              print(bt_cutoff)
+              ### print("Right before rbind")
+              ### print(max_matt)
+              ### print(max_matt_subject_cutoff)
+              ### print(bt_cutoff)
               for (sub_cutoff_i in max_matt_subject_cutoff) {
                 max_matt_df <<- rbind(max_matt_df,
                   list(coefficient=max_matt, subject_cutoff=sub_cutoff_i,
@@ -348,17 +348,17 @@ plot_matthews_max <- function(scores_df, injection_types,
         }
 
         ## ++++++++++ bug search / check +++++++++++++
-        print(both)
-        cat("Base truth (", base_truth_scr, ") cutoff: ", bt_cutoff, "\n")
-	print(as.numeric(m_df$matthews))
-	print(as.character(m_df$counts))
+        ### print(both)
+        ### cat("Base truth (", base_truth_scr, ") cutoff: ", bt_cutoff, "\n")
+	### print(as.numeric(m_df$matthews))
+	### print(as.character(m_df$counts))
 
-        cat("Base truth (", base_truth_scr, ") max matt cutoff: ",
-          max_matt_df$bt_cutoff, "\n")
-        cat("Subject (", subject_scr, ") max matt cutoff: ",
-          max_matt_df$subject_cutoff, "\n")
+        ### cat("Base truth (", base_truth_scr, ") max matt cutoff: ",
+        ###   max_matt_df$bt_cutoff, "\n")
+        ### cat("Subject (", subject_scr, ") max matt cutoff: ",
+        ###   max_matt_df$subject_cutoff, "\n")
 
-        print("+++++++++++++++++++++++++++++++++++++")
+        ### print("+++++++++++++++++++++++++++++++++++++")
 
       })
 
