@@ -261,7 +261,9 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
       type="cairo")
 
     g <- ggplot(sample_df, aes(x=TPR)) +
-      geom_histogram(binwidth=0.01) + xlim(0,1) +
+      geom_histogram(binwidth=0.01) +
+      scale_y_continuous(limits=c(0, 101)) +
+      scale_x_continuous(limits=c(0, 1)) +
       #facet_grid(Injection_Type ~ Ground_Truth)
       facet_grid(Injection_Type ~ Scoring_Method)
     print(g)
@@ -272,7 +274,9 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
       type="cairo")
 
     g <- ggplot(sample_df, aes(x=TNR)) +
-      geom_histogram(binwidth=0.01) + xlim(0,1) +
+      geom_histogram(binwidth=0.01) +
+      scale_y_continuous(limits=c(0, 101)) +
+      scale_x_continuous(limits=c(0, 1)) +
       #facet_grid(Injection_Type ~ Ground_Truth)
       facet_grid(Injection_Type ~ Scoring_Method)
     print(g)
