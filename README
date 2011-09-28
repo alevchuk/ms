@@ -33,8 +33,8 @@ Running the MSA cleanup utility:
   and it will print out the usage help.
 
 Running the complete experiment:
-  Data, with the exception of the classifier, is not included. Follow 
-  data/DATA_README for instruction on downloading versions of CDD and Uniprot.
+  Data is not included in this code repository. CDD and Uniprot are sufficient.
+  Follow data/DATA_README for downloading current versions of CDD and Uniprot.
 
   Once data tar.gz are downloaded, run each command manually:
   002-start, 004-reshape-cdd, 006-reshape-uniprot, 008-sample, ...
