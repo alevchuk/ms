@@ -95,7 +95,6 @@ colnames(UPSTREAM_SAMPLES) <- c("sample_id", "dynamic_cut_file", "scores_file")
 
 library(ggplot2)
 
-
 for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   sample_id <- UPSTREAM_SAMPLES[sample_i, "sample_id"]
   dynamic_cut_file <-
@@ -115,19 +114,21 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   names(sample_df) <- c(
             "Injection_Type", "Max_Matt_Cutoff", "Scoring_Method",
             "Ground_Truth", "MSA")
-  sample_df <- sample_df[sample_df$Scoring_Method == "normd_dx_mod_seq_scr",]
-  sample_df <- sample_df[,names(sample_df) != "Scoring_Method"]
+  #sample_df <- sample_df[sample_df$Scoring_Method == "normd_dx_mod_seq_scr",]
+  #sample_df <- sample_df[,names(sample_df) != "Scoring_Method"]
 
   scores_df <- read.table(scores_file)
-  colnames(scores_df) <- c('scr', 'Injection_Type', 'unused', 'MSA', 'method',
-                           'seqid')
+  colnames(scores_df) <- c('scr', 'Injection_Type', 'unused', 'MSA',
+                           'Scoring_Method', 'seqid')
 
-  scores_df <- scores_df[scores_df$method == "normd_dx_mod_seq_scr",]
   scores_df <- scores_df[,names(scores_df) != "unused"]
-  scores_df <- scores_df[,names(scores_df) != "method"]
+  #scores_df <- scores_df[scores_df$method == "normd_dx_mod_seq_scr",]
+  #scores_df <- scores_df[,names(scores_df) != "method"]
 
  
-  main_df <- merge(sample_df, scores_df, by=c("MSA", "Injection_Type"))
+  main_df <- merge(sample_df, scores_df, by=c("MSA",
+                                              "Injection_Type",
+                                              "Scoring_Method"))
 
 
   #print(sample_df[1:10,])
@@ -136,6 +137,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   #quit()
 
   main_df <- cbind(main_df, list(Actual="Positive"))
+  #q()
 
   main_df[,"Actual"] <- as.character(main_df[,"Actual"]) # not factor anymore
   main_df[grep("_RAND[0-9]", main_df$seqid),"Actual"] <- "Negative"
@@ -156,104 +158,127 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   sample_df <- cbind(sample_df, list(TPR=NaN), list(TNR=NaN))
 
 
+  for(scoring_method in unique(main_df$Scoring_Method)) {
+  local({
+  main_df <- main_df[main_df$Scoring_Method == scoring_method,]
 
   for(rand in unique(main_df$Injection_Type)) {
   local({
-    main_df <- main_df[main_df$Injection_Type == rand,]
+  main_df <- main_df[main_df$Injection_Type == rand,]
 
-    for(msa in unique(main_df$MSA)) {
-    local({
-      main_df <- main_df[main_df$MSA == msa,]
+  for(msa in unique(main_df$MSA)) {
+  local({
+  main_df <- main_df[main_df$MSA == msa,]
 
-      for(truth in unique(main_df$Ground_Truth)) {
-      local({
-        main_df <- main_df[main_df$Ground_Truth == truth,]
-  
+  for(truth in unique(main_df$Ground_Truth)) {
+  local({
+    main_df <- main_df[main_df$Ground_Truth == truth,]
+ 
+    #print(main_df) 
 
-        # Determine the operations
-        main_df <- cbind(main_df, list(Operation="Keep"))
-        main_df$Operation <- as.character(main_df$Operation) # not a factor anymore
-        main_df[main_df$scr < main_df$Max_Matt_Cutoff, "Operation"] <- "Remove"
+    # Determine the operations
+    main_df <- cbind(main_df, list(Operation="Keep"))
+    main_df$Operation <- as.character(main_df$Operation)
+    main_df[main_df$scr < main_df$Max_Matt_Cutoff, "Operation"] <- "Remove"
 
-        postives  <- main_df$Actual == "Positive"
-        negatives <- main_df$Actual == "Negative"
-        keeps     <- main_df$Operation == "Keep"
-        removals  <- main_df$Operation == "Remove"
+    postives  <- main_df$Actual == "Positive"
+    negatives <- main_df$Actual == "Negative"
+    keeps     <- main_df$Operation == "Keep"
+    removals  <- main_df$Operation == "Remove"
 
-        tp <- length(which(keeps    & postives  ))
-        tn <- length(which(removals & negatives ))
-        fp <- length(which(keeps    & negatives ))
-        fn <- length(which(removals & postives  ))
+    tp <- length(which(keeps    & postives  ))
+    tn <- length(which(removals & negatives ))
+    fp <- length(which(keeps    & negatives ))
+    fn <- length(which(removals & postives  ))
 
-        #cat("\n\n\n") 
-        #cat("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
-        #print(c(rand, msa, truth))
-        #options(width=1000, max.print=500000)
-        #print(main_df)
+    #cat("\n\n\n") 
+    #cat("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
+    #print(c(rand, msa, truth))
+    #options(width=1000, max.print=500000)
+    #print(main_df)
 
 
-        print(c("tp:", tp))
-        print(c("tn:", tn))
-        print(c("fp:", fp))
-        print(c("fn:", fn))
+    print(c("tp:", tp))
+    print(c("tn:", tn))
+    print(c("fp:", fp))
+    print(c("fn:", fn))
 
-        TPR <- tp / (tp + fn) 
-        TNR <- tn / (tn + fp)  # = 1 - FPR
-        print(c("TPR:", TPR))
-        print(c("TNR:", TNR))
+    TPR <- tp / (tp + fn) 
+    TNR <- tn / (tn + fp)  # = 1 - FPR
+    print(c("TPR:", TPR))
+    print(c("TNR:", TNR))
 
-        sample_df[
-          sample_df$MSA == msa &
-          sample_df$Ground_Truth == truth &
-          sample_df$Injection_Type == rand, c("TPR", "TNR")] <<- c(TPR, TNR)
+    sample_df[
+      sample_df$Scoring_Method == scoring_method &
+      sample_df$MSA == msa &
+      sample_df$Ground_Truth == truth &
+      sample_df$Injection_Type == rand, c("TPR", "TNR")] <<- c(TPR, TNR)
 
-        #sample_df_here[, "TPR"] <<- TPR
-        #sample_df_here[, "TNR"] <<- TNR
+    #options(width=1000)
+    #print(sample_df)
+    #q()
 
-        #cat("\n\n\n") 
-        #cat("-------------------------------------\n")
-        #print(sample_df_here)
+    #sample_df_here[, "TPR"] <<- TPR
+    #sample_df_here[, "TNR"] <<- TNR
 
-      })
-      } # Ground_Truth
-    })
-    } # MSA
+    #cat("\n\n\n") 
+    #cat("-------------------------------------\n")
+    #print(sample_df_here)
+
+
+
+  # Closing: Ground_Truth, MSA, Rand, and Scoring_Method
   })
-  } # Rand
+  }
+
+  })
+  }
+
+  })
+  }
+
+  })
+  }
 
 
-  cat("\n\n\n") 
-  cat("-------------------------------------\n")
-  print(sample_df)
+  #cat("\n\n\n") 
+  #cat("-------------------------------------\n")
+  #print(sample_df)
 
 
-  ## Bug fix/hack for histogram, otherwise 0s will not show up
-  sample_df[sample_df$TPR == 0] <- 0.0001
-  sample_df[sample_df$TNR == 0] <- 0.0001
+  for(truth in unique(main_df$Ground_Truth)) {
+  local({
+    sample_df <- subset(sample_df, Ground_Truth == truth)
 
-
-
-  png(paste(OUT_DIR, "/", sample_id, "-tp-rates.png", sep=""),
-    width=1000, height=1000,
-    type="cairo")
-
-  g <- ggplot(sample_df, aes(x=TPR)) +
-    geom_histogram(binwidth=0.01) + xlim(0,1) +
-    facet_grid(Injection_Type ~ Ground_Truth)
-  print(g)
-  dev.off() 
+    ## Bug fix/hack for histogram, otherwise 0s will not show up
+    sample_df[sample_df$TPR == 0] <- 0.0001
+    sample_df[sample_df$TNR == 0] <- 0.0001
 
 
 
-  png(paste(OUT_DIR, "/", sample_id, "-tn-rates.png", sep=""),
-    width=1000, height=1000,
-    type="cairo")
+    png(paste(OUT_DIR, "/", sample_id, "-", truth, "-tp-rates.png", sep=""),
+      width=1000, height=1000,
+      type="cairo")
 
-  g <- ggplot(sample_df, aes(x=TNR)) +
-    geom_histogram(binwidth=0.01) + xlim(0,1) +
-    #facet_grid(Injection_Type ~ Ground_Truth)
-    facet_grid(Injection_Type ~ Ground_Truth)
-  print(g)
-  dev.off() 
+    g <- ggplot(sample_df, aes(x=TPR)) +
+      geom_histogram(binwidth=0.01) + xlim(0,1) +
+      #facet_grid(Injection_Type ~ Ground_Truth)
+      facet_grid(Injection_Type ~ Scoring_Method)
+    print(g)
+    dev.off() 
+
+    png(paste(OUT_DIR, "/", sample_id, "-", truth, "-tn-rates.png", sep=""),
+      width=1000, height=1000,
+      type="cairo")
+
+    g <- ggplot(sample_df, aes(x=TNR)) +
+      geom_histogram(binwidth=0.01) + xlim(0,1) +
+      #facet_grid(Injection_Type ~ Ground_Truth)
+      facet_grid(Injection_Type ~ Scoring_Method)
+    print(g)
+    dev.off() 
+  })
+  }
+
 
 }
