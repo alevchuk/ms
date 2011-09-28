@@ -1,0 +1,180 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script and directory where this script is located
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+# Primary locations
+EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+UPSTREAM <- paste(EXPERIMENT_NAME, "/037-plot-matthews-max-data-out", sep="")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+dir.create(OUT_DIR, showWarnings=F)
+
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " Plots known Mattew's max cutoffs", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size>  Sample size",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+SAMPLE_SIZE <- script_args[[1]]
+
+
+
+
+CUTOFFS_SAMPLE_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-cutoffs",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+CUTOFFS_SAMPLE_FILES <- t(CUTOFFS_SAMPLE_FILES)
+rownames(CUTOFFS_SAMPLE_FILES) <- NULL
+colnames(CUTOFFS_SAMPLE_FILES) <- c("filename", "sample_id")
+
+
+
+library(ggplot2)
+
+for (file_id in 1:nrow(CUTOFFS_SAMPLE_FILES)) {
+  sample_file <- CUTOFFS_SAMPLE_FILES[file_id, "filename"] 
+  sample_id <- CUTOFFS_SAMPLE_FILES[file_id, "sample_id"] 
+
+  # Data for one sample
+  sample_df <- read.table(sample_file, header=F, sep="\t")
+  # E.g.: 0.05    0.71099 "guidance_seq_scr"      "Known" "ID50_KOG0001"
+  colnames(sample_df) <- c("Rand", "Cutoff", "Method", "Tracking", "MSA")
+
+  
+  for(method in unique(sample_df$Method)) {
+  local({
+    sample_df <- subset(sample_df, Method == method)
+    #print(sample_df)
+    #cat("\n\n")
+
+
+  # How far each MSA Ab Initio prediction was from the Known Matt Max cutoff?
+
+  kn <- subset(sample_df, Tracking == "Known")
+  ab <- subset(sample_df, Tracking == "Ab Initio")
+  both <- merge(kn, ab, by=c("MSA", "Rand", "Method"))
+
+  new_df <-
+    data.frame(
+      Rand=both$Rand,
+      Cutoff=(both$Cutoff.x - both$Cutoff.y),
+      Method=both$Method,
+      Tracking=rep("Ab_Initio_Diff", nrow(both)),
+      MSA=both$MSA
+    )
+
+  sample_df <- rbind(sample_df, new_df)
+  #print(sample_df)
+  #quit()
+
+
+
+
+
+
+  #for(tacking in unique(sample_df$Tracking)) {
+  for(tacking in c("Known", "Ab_Initio_Diff")) {
+  local({
+    sample_df <- subset(sample_df, Tracking == tacking)
+    #print(sample_df)
+    #cat("\n\n")
+
+    png(type="cairo",
+      paste(OUT_DIR, "/", sample_id, "-", method, "-", tacking, ".png", sep="")
+    )
+
+    sample_df$Rand <- as.factor(sample_df$Rand)
+
+    pl <- ggplot(data=sample_df, aes(x=Rand, y=Cutoff)) +
+      geom_boxplot()
+
+      #geom=c("boxplot", "jitter"))
+
+    # if (method == "normd_dx_mod_seq_scr") {
+    #   pl <- pl + ylim(-0.05, 0.001)
+    # }
+    print(pl)
+    dev.off()
+
+    cat(sample_id, method, tacking, "done\n")
+
+    # Exprot medians, these will be the static cutoffs
+    if (tacking == "Known") {
+      means_df <- data.frame()
+      for(rand in unique(sample_df$Rand)) {
+        cutoffs <- subset(sample_df, Rand == rand)$Cutoff
+        means_df <- rbind(means_df, 
+                      data.frame(Rand=as.numeric(rand), Mean=mean(cutoffs))
+                    )
+      }
+      export_file <-
+        sprintf("%s/%s-%s-tab", OUT_DIR, sample_id, method)
+      print(export_file)
+      write.table(means_df, sep="\t", row.names=F, file=export_file)
+    }
+
+  })
+  }
+
+
+
+
+  })
+  }
+
+  #  #attach(mtcars)
+  #  #par(mfrow=c(2,1)) 
+
+  #  plot(cutoffs, accuracy, xlim=c(range_x_min,range_x_max),
+  #    main=paste("Rand", rand_ratio, m1, "Best cutoff:", signif(a_cutoff, 2)))
+  #  
+  #  plot(cutoffs, custom1 , xlim=c(range_x_min,range_x_max),
+  #    main=paste("Rand", rand_ratio, m1, "Best cutoff:", signif(c1_cutoff,2)),
+  #    ylab="sensitivity + specificity")
+
+  #  dev.off()
+
+
+
+}
