@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+options(width=1000, max.print=500000)
+
 # To run Bash commands
 SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
@@ -34,6 +36,11 @@ EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 UPSTREAM <- paste(EXPERIMENT_NAME, "/037-plot-matthews-max-data-out", sep="")
 UPSTREAM2 <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
+UPSTREAM3 <-
+  paste(EXPERIMENT_NAME, "/039-boxplot-all-cutoffs-per-msa-data-out", sep="")
+
+
+
 
 dir.create(OUT_DIR, showWarnings=FALSE)
 
@@ -85,11 +92,35 @@ rownames(SCORE_FILES) <- NULL
 colnames(SCORE_FILES) <- c("filename", "sample_id")
 
 
-
-UPSTREAM_SAMPLES <- merge(DYNAMIC_CUT_FILES, SCORE_FILES, by="sample_id")
-#print(UPSTREAM_SAMPLES)
+STATIC_CUT_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM3, "/sample-size", SAMPLE_SIZE, "*-static-cutoffs-tab",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+   sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+STATIC_CUT_FILES <- t(STATIC_CUT_FILES)
+rownames(STATIC_CUT_FILES) <- NULL
+colnames(STATIC_CUT_FILES) <- c("filename", "sample_id")
+#print(STATIC_CUT_FILES)
 #q()
-colnames(UPSTREAM_SAMPLES) <- c("sample_id", "dynamic_cut_file", "scores_file")
+
+# UPSTREAM3, "/sample-size100-id503-guidance_seq_scr-tab"
+#"Rand"	"Mean"
+#0.05	0.59276548
+#0.1	0.52242936
+
+###, header=T
+
+
+UPSTREAM_SAMPLES <-
+  merge(merge(DYNAMIC_CUT_FILES,
+              SCORE_FILES, by="sample_id"),
+        STATIC_CUT_FILES, by="sample_id")
+
+colnames(UPSTREAM_SAMPLES) <-
+  c("sample_id", "dynamic_cut_file", "scores_file", "static_cut_file")
+
 #print(UPSTREAM_SAMPLES)
 #q()
 
@@ -99,41 +130,62 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   sample_id <- UPSTREAM_SAMPLES[sample_i, "sample_id"]
   dynamic_cut_file <-
     as.character(UPSTREAM_SAMPLES[sample_i, "dynamic_cut_file"])
+  static_cut_file <-
+    as.character(UPSTREAM_SAMPLES[sample_i, "static_cut_file"])
   scores_file <-
     as.character(UPSTREAM_SAMPLES[sample_i, "scores_file"])
-
   #print(dynamic_cut_file)
   #q()
-  sample_df <- read.table(dynamic_cut_file, header=F, sep = "\t")
 
-  #print(sample_df)
+  dynamic_cut_df <- read.table(dynamic_cut_file, header=F, sep = "\t")
+  #print(dynamic_cut_df)
   #quit()
-
   #        V1      V2               V3       V4         V5
   # 1    0.05  0.0350 guidance_seq_scr Guidance  pfam11925
-  names(sample_df) <- c(
-            "Injection_Type", "Max_Matt_Cutoff", "Scoring_Method",
+  names(dynamic_cut_df) <- c(
+            "Injection_Type", "Chosen_Cutoff", "Scoring_Method",
             "Ground_Truth", "MSA")
-  #sample_df <- sample_df[sample_df$Scoring_Method == "normd_dx_mod_seq_scr",]
-  #sample_df <- sample_df[,names(sample_df) != "Scoring_Method"]
+
+  static_cut_df <- read.table(static_cut_file, header=T, sep = "\t")
+  #    Rand          Mean               Method
+  static_cut_df <- cbind(static_cut_df, list(Ground_Truth='Static'))
+  names(static_cut_df) <- c(
+            "Injection_Type", "Chosen_Cutoff", "Scoring_Method",
+            "Ground_Truth")
+  #print(static_cut_df)
+  #quit()
+
+  # Cross with the MSAs column
+  static_cut_df_new <- data.frame()
+  for(msa_name in unique(dynamic_cut_df$MSA))
+    static_cut_df_new <-
+      rbind(static_cut_df_new,
+       cbind(static_cut_df, list(MSA=msa_name))
+      )
+  static_cut_df <- static_cut_df_new
+  #print(static_cut_df)
+  #quit()
+
+  cuts_df <- rbind(static_cut_df, dynamic_cut_df)
+  #print(cuts_df)
+  #quit()
+
 
   scores_df <- read.table(scores_file)
   colnames(scores_df) <- c('scr', 'Injection_Type', 'unused', 'MSA',
                            'Scoring_Method', 'seqid')
 
   scores_df <- scores_df[,names(scores_df) != "unused"]
-  #scores_df <- scores_df[scores_df$method == "normd_dx_mod_seq_scr",]
-  #scores_df <- scores_df[,names(scores_df) != "method"]
 
  
-  main_df <- merge(sample_df, scores_df, by=c("MSA",
-                                              "Injection_Type",
-                                              "Scoring_Method"))
+  main_df <- merge(cuts_df, scores_df, by=c("MSA",
+                                            "Injection_Type",
+                                            "Scoring_Method"))
 
 
-  #print(sample_df[1:10,])
+  #print(cuts_df[1:10,])
   #print(scores_df[1:10,])
-  #print(main_df[1:10,])
+  #print(main_df)
   #quit()
 
   main_df <- cbind(main_df, list(Actual="Positive"))
@@ -142,12 +194,11 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   main_df[,"Actual"] <- as.character(main_df[,"Actual"]) # not factor anymore
   main_df[grep("_RAND[0-9]", main_df$seqid),"Actual"] <- "Negative"
 
-  print(c("sample_df", "scores_df", "main_df"))
-  print(dim(sample_df))
+  print(c("cuts_df", "scores_df", "main_df"))
+  print(dim(cuts_df))
   print(dim(scores_df))
   print(dim(main_df))
 
-  #options(width=1000, max.print=500000)
   #print(main_df[main_df$MSA == "COG0177" & main_df$Injection_Type == "0.05",])
   #quit()
 
@@ -155,7 +206,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
 
   ## Data that will be derived by this script
-  sample_df <- cbind(sample_df, list(TPR=NaN), list(TNR=NaN))
+  cuts_df <- cbind(cuts_df, list(TPR=NaN), list(TNR=NaN))
 
 
   for(scoring_method in unique(main_df$Scoring_Method)) {
@@ -179,7 +230,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
     # Determine the operations
     main_df <- cbind(main_df, list(Operation="Keep"))
     main_df$Operation <- as.character(main_df$Operation)
-    main_df[main_df$scr < main_df$Max_Matt_Cutoff, "Operation"] <- "Remove"
+    main_df[main_df$scr < main_df$Chosen_Cutoff, "Operation"] <- "Remove"
 
     postives  <- main_df$Actual == "Positive"
     negatives <- main_df$Actual == "Negative"
@@ -208,22 +259,22 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
     print(c("TPR:", TPR))
     print(c("TNR:", TNR))
 
-    sample_df[
-      sample_df$Scoring_Method == scoring_method &
-      sample_df$MSA == msa &
-      sample_df$Ground_Truth == truth &
-      sample_df$Injection_Type == rand, c("TPR", "TNR")] <<- c(TPR, TNR)
+    cuts_df[
+      cuts_df$Scoring_Method == scoring_method &
+      cuts_df$MSA == msa &
+      cuts_df$Ground_Truth == truth &
+      cuts_df$Injection_Type == rand, c("TPR", "TNR")] <<- c(TPR, TNR)
 
     #options(width=1000)
-    #print(sample_df)
+    #print(cuts_df)
     #q()
 
-    #sample_df_here[, "TPR"] <<- TPR
-    #sample_df_here[, "TNR"] <<- TNR
+    #cuts_df_here[, "TPR"] <<- TPR
+    #cuts_df_here[, "TNR"] <<- TNR
 
     #cat("\n\n\n") 
     #cat("-------------------------------------\n")
-    #print(sample_df_here)
+    #print(cuts_df_here)
 
 
 
@@ -243,44 +294,69 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
   #cat("\n\n\n") 
   #cat("-------------------------------------\n")
-  #print(sample_df)
+  #print(cuts_df)
 
 
   for(truth in unique(main_df$Ground_Truth)) {
   local({
-    sample_df <- subset(sample_df, Ground_Truth == truth)
+    cuts_df <- subset(cuts_df, Ground_Truth == truth)
+
 
     ## Bug fix/hack for histogram, otherwise 0s will not show up
-    sample_df[sample_df$TPR == 0] <- 0.0001
-    sample_df[sample_df$TNR == 0] <- 0.0001
-
+    #print(cuts_df)
+    #print(cuts_df$TPR == 0)
+    #q()
+    cuts_df[cuts_df$TPR == 0, "TPR"] <- 0.0001
+    cuts_df[cuts_df$TNR == 0, "TNR"] <- 0.0001
+    #q()
 
 
     png(paste(OUT_DIR, "/", sample_id, "-", truth, "-tp-rates.png", sep=""),
       width=1000, height=1000,
       type="cairo")
 
-    g <- ggplot(sample_df, aes(x=TPR)) +
-      geom_histogram(binwidth=0.01) +
-      scale_y_continuous(limits=c(0, 101)) +
+    g <- ggplot(cuts_df) +
+
+      opts(
+        axis.title.x =  theme_blank(),
+        title="True Positive/Negative Rates"
+      ) +
+      #geom_histogram(binwidth=0.01) +
+
+      geom_histogram(aes(x=TPR),
+        fill="red", alpha = 0.7, binwidth=0.01) + 
+
+      geom_histogram(aes(x=TNR),
+        fill="blue", alpha = 0.4, binwidth=0.01) +
+
       scale_x_continuous(limits=c(0, 1)) +
-      #facet_grid(Injection_Type ~ Ground_Truth)
+
       facet_grid(Injection_Type ~ Scoring_Method)
+
+
+
+      if (any(grep("50[0-9]", sample_id))) {
+        g <- g + scale_y_continuous(limits=c(0, 21))
+      } else {
+        g <- g + scale_y_continuous(limits=c(0, 101))
+      }
+     
+
     print(g)
     dev.off() 
 
-    png(paste(OUT_DIR, "/", sample_id, "-", truth, "-tn-rates.png", sep=""),
-      width=1000, height=1000,
-      type="cairo")
+    #png(paste(OUT_DIR, "/", sample_id, "-", truth, "-tn-rates.png", sep=""),
+    #  width=1000, height=1000,
+    #  type="cairo")
 
-    g <- ggplot(sample_df, aes(x=TNR)) +
-      geom_histogram(binwidth=0.01) +
-      scale_y_continuous(limits=c(0, 101)) +
-      scale_x_continuous(limits=c(0, 1)) +
-      #facet_grid(Injection_Type ~ Ground_Truth)
-      facet_grid(Injection_Type ~ Scoring_Method)
-    print(g)
-    dev.off() 
+    #g <- ggplot(cuts_df, aes(x=TNR)) +
+    #  geom_histogram(binwidth=0.01) +
+    #  scale_y_continuous(limits=c(0, 101)) +
+    #  scale_x_continuous(limits=c(0, 1)) +
+    #  #facet_grid(Injection_Type ~ Ground_Truth)
+    #  facet_grid(Injection_Type ~ Scoring_Method)
+    #print(g)
+    #dev.off() 
   })
   }
 
