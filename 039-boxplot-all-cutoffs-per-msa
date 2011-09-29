@@ -168,7 +168,7 @@ for (file_id in 1:nrow(CUTOFFS_SAMPLE_FILES)) {
 
 
   export_file <-
-    sprintf("%s/%s-%s-tab", OUT_DIR, sample_id, "-static-cutoffs-tab")
+    sprintf("%s/%s-static-cutoffs-tab", OUT_DIR, sample_id)
   print(export_file)
   write.table(means_df, sep="\t", row.names=F, file=export_file)
 
