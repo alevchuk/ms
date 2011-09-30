@@ -334,7 +334,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
       opts(
         axis.title.x =  theme_blank(),
-        title="True Positive/Negative Rates"
+        title=paste(sample_id, truth, "True Positive/Negative Rates")
       ) +
       #geom_histogram(binwidth=0.01) +
 
