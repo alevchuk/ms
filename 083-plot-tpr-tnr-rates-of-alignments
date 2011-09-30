@@ -68,18 +68,6 @@ if(length(script_args) != 1) {
 SAMPLE_SIZE  <- script_args[[1]]
 
 
-DYNAMIC_CUT_FILES <- sapply(SH(paste(
-  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-cutoffs",
-  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
-  sep="")), function(x) {
-      strsplit(x, "\t")[[1]]
-    }
-)
-DYNAMIC_CUT_FILES <- t(DYNAMIC_CUT_FILES)
-rownames(DYNAMIC_CUT_FILES) <- NULL
-colnames(DYNAMIC_CUT_FILES) <- c("filename", "sample_id")
-
-
 SCORE_FILES <- sapply(SH(paste(
   "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE, "*-seq-scores", 
   " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
@@ -102,8 +90,21 @@ STATIC_CUT_FILES <- sapply(SH(paste(
 STATIC_CUT_FILES <- t(STATIC_CUT_FILES)
 rownames(STATIC_CUT_FILES) <- NULL
 colnames(STATIC_CUT_FILES) <- c("filename", "sample_id")
+STATIC_CUT_FILES <- as.data.frame(STATIC_CUT_FILES)
 #print(STATIC_CUT_FILES)
 #q()
+
+DYNAMIC_CUT_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-cutoffs",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+DYNAMIC_CUT_FILES <- t(DYNAMIC_CUT_FILES)
+rownames(DYNAMIC_CUT_FILES) <- NULL
+colnames(DYNAMIC_CUT_FILES) <- c("filename", "sample_id")
+DYNAMIC_CUT_FILES <- as.data.frame(DYNAMIC_CUT_FILES)
 
 # UPSTREAM3, "/sample-size100-id503-guidance_seq_scr-tab"
 #"Rand"	"Mean"
@@ -113,16 +114,26 @@ colnames(STATIC_CUT_FILES) <- c("filename", "sample_id")
 ###, header=T
 
 
-UPSTREAM_SAMPLES <-
-  merge(merge(DYNAMIC_CUT_FILES,
-              SCORE_FILES, by="sample_id"),
-        STATIC_CUT_FILES, by="sample_id")
+UPSTREAM_SAMPLES <- merge(DYNAMIC_CUT_FILES, SCORE_FILES, by="sample_id")
+
+# All samples get sample1's cut files
+sample1_static_cuts_filename <- as.character(
+                      subset(STATIC_CUT_FILES,
+                         sample_id ==
+                           paste("sample-size", SAMPLE_SIZE, "-id1", sep="")
+                      )$filename
+                    )
+
+UPSTREAM_SAMPLES <- cbind(UPSTREAM_SAMPLES, sample1_static_cuts_filename)
+#print(UPSTREAM_SAMPLES)
+#q()
 
 colnames(UPSTREAM_SAMPLES) <-
   c("sample_id", "dynamic_cut_file", "scores_file", "static_cut_file")
 
 #print(UPSTREAM_SAMPLES)
 #q()
+
 
 library(ggplot2)
 
@@ -209,6 +220,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
   ## Data that will be derived by this script
   cuts_df <- cbind(cuts_df, list(TPR=NaN), list(TNR=NaN))
+  #q()
 
 
   for(scoring_method in unique(main_df$Scoring_Method)) {
