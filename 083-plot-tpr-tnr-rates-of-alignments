@@ -127,6 +127,7 @@ colnames(UPSTREAM_SAMPLES) <-
 library(ggplot2)
 
 for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
+#for (sample_i in 6) {
   sample_id <- UPSTREAM_SAMPLES[sample_i, "sample_id"]
   dynamic_cut_file <-
     as.character(UPSTREAM_SAMPLES[sample_i, "dynamic_cut_file"])
@@ -202,7 +203,8 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   #print(main_df[main_df$MSA == "COG0177" & main_df$Injection_Type == "0.05",])
   #quit()
 
-
+  #print(cuts_df)
+  #q()
 
 
   ## Data that will be derived by this script
@@ -304,6 +306,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
     ## Bug fix/hack for histogram, otherwise 0s will not show up
     #print(cuts_df)
+    #print(str(cuts_df[1,]))
     #print(cuts_df$TPR == 0)
     #q()
     cuts_df[cuts_df$TPR == 0, "TPR"] <- 0.0001
@@ -333,12 +336,13 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
 
       facet_grid(Injection_Type ~ Scoring_Method)
 
-
-
+      # For a standard scaling, insert an invisible column at 1.0
       if (any(grep("50[0-9]", sample_id))) {
-        g <- g + scale_y_continuous(limits=c(0, 21))
+        g <- g + geom_histogram(data=data.frame(x=rep(1.0, 25)), aes(x=x),
+          fill="gray", alpha = 0.0, binwidth=0.01)
       } else {
-        g <- g + scale_y_continuous(limits=c(0, 101))
+        g <- g + geom_histogram(data=data.frame(x=rep(1.0, 100)), aes(x=x),
+          fill="gray", alpha = 0.0, binwidth=0.01)
       }
      
 
