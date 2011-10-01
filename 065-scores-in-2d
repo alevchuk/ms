@@ -1,0 +1,199 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+
+# Primary locations
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
+UPSTREAM2 <- paste(EXPERIMENT_NAME, "/060-balance-scores-data-out", sep="")
+
+dir.create(OUT_DIR, showWarnings=FALSE)
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " plots box plots per msa", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
+
+# Porject conventions
+SAMPLE_FILES <- sh(paste(
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores", sep=""))
+SAMPLE_FILES_BALANCED <- sh(paste(
+  "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE,
+  "*-balanced-scores-tab", sep=""))
+
+
+ALL_SCORES <-
+  data.frame(scores=SAMPLE_FILES, balanced_scores=SAMPLE_FILES_BALANCED)
+
+
+
+
+reshape_data <- function(scores_df, rand) {
+
+  # Mark +/- based on the sequence name
+  n <- colnames(scores_df)
+  scores_df <- cbind(scores_df,
+    factor("Positive", levels=c("Positive", "Negative")))
+  colnames(scores_df) <- c(n, "Actual")
+  if (rand > 0) {
+    locations_of_negatives <- grep("_RAND[0-9]", scores_df[,'seqid'])
+    scores_df[locations_of_negatives, "Actual"] <- "Negative"
+  }
+
+  scores_df
+}
+
+
+
+# Plotter
+library(ggplot2)
+plot_scores_in_2d <- function(scores_df, info) {
+
+  binwidth <- 0.01
+
+  png(paste(
+    OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
+    "-rand", sprintf("%.2f", info$injection_type),
+    "-scores-in-2d.png", sep=""),
+    width=500, heigh=500, type="cairo")
+
+  g <- ggplot(scores_df, aes(x=gscore, y=nscore)) +
+         opts(
+           axis.ticks = theme_blank(),
+           axis.text.y =  theme_blank(),
+           axis.title.y = theme_text(size=16, angle=90),
+           axis.title.x = theme_text(size=16, vjust=0.03),
+           axis.text.x = theme_text(size=16),
+           title = paste(sprintf("%.2f", info$injection_type))
+         ) + geom_point(aes(colour=Actual))
+
+  ### #, fill=Actual))
+
+  ### if (info$method == "normd_dx_mod_seq_scr") {
+  ###   g <- g + xlim(-0.02,0.005)
+  ###   binwidth <- 0.00025
+  ### }
+
+  ### g <- g + 
+  ###   geom_histogram(data=subset(scores_df, Actual == "Positive"),
+  ###     fill="red", alpha = 0.6, binwidth=binwidth) 
+
+  ### if (info$injection_type != 0.00) {
+  ###   g <- g +
+  ###     geom_histogram(data=subset(scores_df, Actual == "Negative"),
+  ###       fill="blue", alpha = 0.3, binwidth=binwidth) 
+  ### }
+
+  print(g)
+  dev.off() 
+}
+
+
+#print(ALL_SCORES)
+#q()
+
+for(sample_i in 1:nrow(ALL_SCORES)) {
+  #sample_file in SAMPLE_FILES) {
+
+  sample_file <- as.character(ALL_SCORES[sample_i,]$scores)
+  balanced_sample_file <- as.character(ALL_SCORES[sample_i,]$balanced_scores)
+  print(sample_file)
+  print(balanced_sample_file)
+
+  scores_df <- read.table(sample_file)
+  colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+  injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
+
+  balanced_scores_df <- read.table(balanced_sample_file)
+  colnames(balanced_scores_df) <-
+    c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+
+  balanced_scores_df$method <- as.character(balanced_scores_df$method)
+
+  balanced_scores_df[balanced_scores_df$method ==
+    "guidance_seq_scr", "method"] <- "guidance_balanced"
+  balanced_scores_df[balanced_scores_df$method ==
+    "normd_dx_mod_seq_scr", "method"] <- "normd_balanced"
+
+  #print(balanced_scores_df[1:100,])
+  #print(scores_df[1:100,])
+  #q()
+  scores_df  <- rbind(scores_df, balanced_scores_df)
+  #print(scores_df)
+  #q()
+
+  for(injection_type in injection_types) {
+    local({
+      scores_df <- scores_df[scores_df[,'rand'] == injection_type,]
+      scoring_methods <- sort(as.character(unique(scores_df[,'method'])))
+
+      sample_id <- sh(sprintf(
+        "ruby -e '\"%s\" =~ /sample-size[0-9]+-id([0-9]+)/; puts $1'",
+        sample_file))
+
+      scores_df <- reshape_data(scores_df, injection_type)
+
+      gscores_df <- subset(scores_df, method == "guidance_seq_scr")
+      nscores_df <- subset(scores_df, method == "normd_dx_mod_seq_scr")
+
+      scores_df <- merge(gscores_df, nscores_df,
+        by=c("rand", "unused", "msa", "seqid", "Actual"))
+      colnames(scores_df) <- c("rand", "unused", "msa", "seqid", "Actual", 
+                      "gscore", "method.x", "nscore", "method.y")
+      #options(width=10000)
+      #print(scores_df)
+      #q()
+
+      plot_scores_in_2d(scores_df, 
+        info=list(sample_id=sample_id,
+                  injection_type=injection_type))
+    })
+  }
+}
