@@ -33,6 +33,7 @@ script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
+UPSTREAM2 <- paste(EXPERIMENT_NAME, "/060-balance-scores-data-out", sep="")
 
 dir.create(OUT_DIR, showWarnings=FALSE)
 
@@ -63,9 +64,19 @@ SAMPLE_SIZE  <- script_args[[1]]
 # Porject conventions
 SAMPLE_FILES <- sh(paste(
   "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores", sep=""))
+SAMPLE_FILES_BALANCED <- sh(paste(
+  "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE,
+  "*-balanced-scores-tab", sep=""))
+
+
+ALL_SCORES <-
+  data.frame(scores=SAMPLE_FILES, balanced_scores=SAMPLE_FILES_BALANCED)
+
+
 
 
 reshape_data <- function(scores_df, rand) {
+
   # Mark +/- based on the sequence name
   n <- colnames(scores_df)
   scores_df <- cbind(scores_df,
@@ -105,7 +116,8 @@ plot_score_separation <- function(scores_df, info) {
            axis.text.y =  theme_blank(),
            axis.title.y = theme_text(size=16, angle=90),
            axis.title.x = theme_text(size=16, vjust=0.03),
-           axis.text.x = theme_text(size=16)
+           axis.text.x = theme_text(size=16),
+           title = paste(sprintf("%.2f", info$injection_type), info$method)
          ) + xlab("Score of a seqeunce")
 
   #, fill=Actual))
@@ -130,11 +142,38 @@ plot_score_separation <- function(scores_df, info) {
 }
 
 
+#print(ALL_SCORES)
+#q()
 
-for(sample_file in SAMPLE_FILES) {
+for(sample_i in 1:nrow(ALL_SCORES)) {
+  #sample_file in SAMPLE_FILES) {
+
+  sample_file <- as.character(ALL_SCORES[sample_i,]$scores)
+  balanced_sample_file <- as.character(ALL_SCORES[sample_i,]$balanced_scores)
+  print(sample_file)
+  print(balanced_sample_file)
+
   scores_df <- read.table(sample_file)
   colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
-  injection_types <- sort(unique(scores_df[,'rand']))
+  injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
+
+  balanced_scores_df <- read.table(balanced_sample_file)
+  colnames(balanced_scores_df) <-
+    c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+
+  balanced_scores_df$method <- as.character(balanced_scores_df$method)
+
+  balanced_scores_df[balanced_scores_df$method ==
+    "guidance_seq_scr", "method"] <- "guidance_balanced"
+  balanced_scores_df[balanced_scores_df$method ==
+    "normd_dx_mod_seq_scr", "method"] <- "normd_balanced"
+
+  #print(balanced_scores_df[1:100,])
+  #print(scores_df[1:100,])
+  #q()
+  scores_df  <- rbind(scores_df, balanced_scores_df)
+  #print(scores_df)
+  #q()
 
   for(injection_type in injection_types) {
     local({
@@ -148,7 +187,7 @@ for(sample_file in SAMPLE_FILES) {
             "ruby -e '\"%s\" =~ /sample-size[0-9]+-id([0-9]+)/; puts $1'",
             sample_file))
 
-          print(c(sample_file, sample_id))
+          #print(c(sample_file, sample_id))
 
           scores_df <- reshape_data(scores_df, injection_type)
 

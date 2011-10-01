@@ -1,0 +1,266 @@
+#!/usr/bin/env Rscript
+
+# GROUPBALANCER is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# To run Bash commands
+SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+# Primary locations
+EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+dir.create(OUT_DIR, showWarnings=F)
+
+
+UPSTREAM1 <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
+UPSTREAM2 <- paste(EXPERIMENT_NAME, "/037-plot-matthews-max-data-out", sep="")
+
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " Normalizes scores accoring to a cutoff", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size>  Sample size",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+SAMPLE_SIZE <- script_args[[1]]
+
+SCORES_SAMPLE_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM1, "/sample-size", SAMPLE_SIZE, "*-seq-scores",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+
+CUTOFFS_SAMPLE_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE, "*-cutoffs",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+
+
+
+# Merge
+CUTOFFS_SAMPLE_FILES <-
+  data.frame(cutoffs_filename=CUTOFFS_SAMPLE_FILES[1,],
+  sample_id=CUTOFFS_SAMPLE_FILES[2,], stringsAsFactors=F)
+rownames(CUTOFFS_SAMPLE_FILES) <- c()
+
+SCORES_SAMPLE_FILES <-
+  data.frame(scores_filename=SCORES_SAMPLE_FILES[1,],
+  sample_id=SCORES_SAMPLE_FILES[2,], stringsAsFactors=F)
+rownames(SCORES_SAMPLE_FILES) <- c()
+
+SAMPLES_DF <- merge(SCORES_SAMPLE_FILES, CUTOFFS_SAMPLE_FILES, by="sample_id")
+
+options(width=1000)
+
+#print(SAMPLES_DF)
+#q()
+
+library(ggplot2)
+
+
+
+# Itterate over every sample
+for (sample_id in SAMPLES_DF$sample_id) {
+  cutoffs_filename <-
+    SAMPLES_DF[SAMPLES_DF$sample_id==sample_id,]$cutoffs_filename
+  scores_filename <-
+    SAMPLES_DF[SAMPLES_DF$sample_id==sample_id,]$scores_filename
+
+  print(sample_id)
+  print(cutoffs_filename)
+  print(scores_filename)
+
+  cutoffs_df <- read.table(cutoffs_filename)
+  names(cutoffs_df) <-
+    c('rand', 'cutoff', 'scr_method', 'truth', 'msa')
+    # E.g.:  0.05     2.788995e-01   guidance_seq_scr Known  COG0177
+
+  scores_df <-
+    read.table(SAMPLES_DF[SAMPLES_DF$sample_id==sample_id,"scores_filename"])
+  names(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'scr_method', 'seqid')
+  # E.g.: 9.388270e-01 0.00 - COG0177 guidance_seq_scr gi|1311214|pdb|2ABK|
+  # Methods: guidance_seq_scr normd_dx_mod_seq_scr
+
+
+  balanced_scores_df <- data.frame()
+
+
+  for (msa in unique(cutoffs_df$msa)) {
+  local({
+    print(msa)
+
+    cutoffs_df <- cutoffs_df[cutoffs_df$msa==msa,]
+    scores_df <- scores_df[scores_df$msa==msa,]
+    #quit()
+
+    #print(grep("^guidance", scores_df$scr_method))
+    #quit()
+
+    #print(n_scores)
+    #print(cutoffs_df)
+    #cat("\n")
+
+    gg_df <- data.frame()
+
+    for (rand in unique(cutoffs_df$rand)) {
+    local({
+      #print(rand)
+
+      cutoffs_df <- cutoffs_df[cutoffs_df$rand==rand,]
+      scores_df <- scores_df[scores_df$rand==rand,]
+
+      n_scores <- sort(scores_df[grep("^normd", scores_df$scr_method), 'scr'])
+      g_scores <-
+        sort(scores_df[grep("^guidance", scores_df$scr_method), 'scr'])
+
+
+      #print(grep("^guidance", cutoffs_df$scr_method))
+      ###print(n_scores)
+      ###print(cutoffs_df)
+      ###cat("\n")
+
+
+
+
+      for (m in unique(cutoffs_df$scr_method)) {
+        method_Ts <- cutoffs_df[cutoffs_df$scr_method == m,]
+
+        #print(unique(method_Ts$truth))
+        #q()
+
+        for (t in 'Ab Initio') { # unique(method_Ts$truth)) {
+          T <- method_Ts[method_Ts$truth == t,]$cutoff
+
+          ## Do you really need to sort?
+          #scores <- sort(scores_df[scores_df$scr_method == m, 'scr'])
+          scores <- scores_df[scores_df$scr_method == m, 'scr']
+          #print(T)
+          #print(scores)
+
+
+
+
+          
+          
+          # to 0..1
+          min1 <- min(scores)
+          scores <- scores - min1
+          
+          max1 <- max(scores)
+          scores <- scores / max1
+          
+          T <- T - min1
+          T <- T / max1
+          
+          T
+          
+          
+          scores <- c(
+            1 - (1 - scores[scores > T]) / (2 - 2 * T),
+            scores[scores <= T] / (2 * T)
+          )
+          
+          
+
+          #print(msa)
+          #print(scores_df)
+          #print(cutoffs_df)
+          #cat("\n")
+          gg_df <<- rbind(gg_df, cbind(scores, paste(m,t, sep="\n")))
+
+          #scores_df$scr <- gg_df$scores
+
+          #cat("ooooooooooooooooooooooooooooooooooooooooooooooooo\n")
+          #tmp <- scores_df[scores_df$scr_method == m, ]
+          #print(tmp)
+          #print(dim(tmp))
+          #cat("ooooooooooooooooooooooooooooooooooooooooooooooooo\n")
+	  #print(scores)
+          #print(length(scores))
+          #cat("ooooooooooooooooooooooooooooooooooooooooooooooooo\n")
+          scores_df[scores_df$scr_method == m, 'scr'] <- scores
+        }
+      }
+
+      gg_df <<- gg_df
+
+      balanced_scores_df <<- rbind(balanced_scores_df, scores_df)
+    })
+    }
+
+
+    #print(gg_df)
+    #print(str(gg_df$score))
+    gg_df$scores <- as.numeric(as.character(gg_df$scores))
+    ##print(gg_df)
+
+    names(gg_df) <- c('Score', 'Type')
+
+    #sample_id
+    #rand
+
+    #png(width=500, height=500,
+    #  paste(OUT_DIR, "/box-rand", rand, "-", msa, ".png", sep=""),
+    #  type="cairo")
+    #print(ggplot(gg_df, aes(factor(Type), Score)) + geom_boxplot())
+    #dev.off()
+
+    #next
+    #
+    #
+    #
+
+  })
+  }
+
+  #cat("\n\n")
+  #print(scores_df)
+  #cat("ooooooooooooooooooooooooooooooooooooooooooooooooo\n")
+  #print(balanced_scores_df)
+  #q()
+
+  outfile <- paste(OUT_DIR, "/", sample_id, "-balanced-scores-tab", sep="")
+  write.table(file=outfile, balanced_scores_df, sep="\t")
+
+}
