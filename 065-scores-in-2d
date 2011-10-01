@@ -98,40 +98,52 @@ plot_scores_in_2d <- function(scores_df, info) {
 
   binwidth <- 0.01
 
+  g_opts <-
+    opts(
+       axis.title.y = theme_text(size=16, angle=90),
+       axis.title.x = theme_text(size=16, vjust=0.03),
+       axis.text.x = theme_text(size=16),
+       axis.text.y = theme_text(size=16),
+       title = paste(sprintf("%.2f", info$injection_type))
+     ) 
+
+  ##################
+  # Color
+  ##################
   png(paste(
     OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
     "-rand", sprintf("%.2f", info$injection_type),
     "-scores-in-2d.png", sep=""),
-    width=500, heigh=500, type="cairo")
+    width=800, heigh=800, type="cairo")
 
-  g <- ggplot(scores_df, aes(x=gscore, y=nscore)) +
-         opts(
-           axis.ticks = theme_blank(),
-           axis.text.y =  theme_blank(),
-           axis.title.y = theme_text(size=16, angle=90),
-           axis.title.x = theme_text(size=16, vjust=0.03),
-           axis.text.x = theme_text(size=16),
-           title = paste(sprintf("%.2f", info$injection_type))
-         ) + geom_point(aes(colour=Actual))
+   g_color <- ggplot(scores_df, aes(x=gscore, y=nscore)) +
+     geom_point(aes(shape=Actual, colour=Actual), size=5, alpha=0.2) +
+     g_opts
 
-  ### #, fill=Actual))
+  print(g_color)
+  dev.off() 
 
-  ### if (info$method == "normd_dx_mod_seq_scr") {
-  ###   g <- g + xlim(-0.02,0.005)
-  ###   binwidth <- 0.00025
-  ### }
 
-  ### g <- g + 
-  ###   geom_histogram(data=subset(scores_df, Actual == "Positive"),
-  ###     fill="red", alpha = 0.6, binwidth=binwidth) 
+  ##################
+  # Black and White
+  ##################
+  png(paste(
+    OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
+    "-rand", sprintf("%.2f", info$injection_type),
+    "-scores-in-2d-bw.png", sep=""),
+    width=800, heigh=800, type="cairo")
 
-  ### if (info$injection_type != 0.00) {
-  ###   g <- g +
-  ###     geom_histogram(data=subset(scores_df, Actual == "Negative"),
-  ###       fill="blue", alpha = 0.3, binwidth=binwidth) 
-  ### }
+  # Revers order of colors and shapes
+  scores_df$Actual <-
+    factor(scores_df$Actual, levels = rev(levels(scores_df$Actual)))
 
-  print(g)
+  g_bw <- ggplot(scores_df, aes(x=gscore, y=nscore)) +
+     geom_point(aes(shape=Actual, colour=Actual), size=5, alpha=0.7) +
+     theme_bw() +
+     scale_colour_grey() +
+     g_opts
+
+  print(g_bw)
   dev.off() 
 }
 
