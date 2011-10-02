@@ -36,6 +36,7 @@ UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
 UPSTREAM2 <- paste(EXPERIMENT_NAME, "/060-balance-scores-data-out", sep="")
 
 dir.create(OUT_DIR, showWarnings=FALSE)
+dir.create(sprintf("%s/bw", OUT_DIR), showWarnings=FALSE)
 
 # How to use this script
 usage_and_quit <- function() {
@@ -104,7 +105,8 @@ plot_scores_in_2d <- function(scores_df, info) {
        axis.title.x = theme_text(size=16, vjust=0.03),
        axis.text.x = theme_text(size=16),
        axis.text.y = theme_text(size=16),
-       title = paste(sprintf("%.2f", info$injection_type))
+       title = paste(sprintf("%.2f", info$injection_type),
+                     info$method_x, info$method_y)
      ) 
 
   ##################
@@ -113,6 +115,7 @@ plot_scores_in_2d <- function(scores_df, info) {
   png(paste(
     OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
     "-rand", sprintf("%.2f", info$injection_type),
+    "-", info$method_x, "-", info$method_y,
     "-scores-in-2d.png", sep=""),
     width=800, heigh=800, type="cairo")
 
@@ -128,9 +131,10 @@ plot_scores_in_2d <- function(scores_df, info) {
   # Black and White
   ##################
   png(paste(
-    OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
+    OUT_DIR, "/bw/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
     "-rand", sprintf("%.2f", info$injection_type),
-    "-scores-in-2d-bw.png", sep=""),
+    "-", info$method_x, "-", info$method_y,
+    "-scores-in-2d.png", sep=""),
     width=800, heigh=800, type="cairo")
 
   # Revers order of colors and shapes
@@ -192,20 +196,39 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
 
       scores_df <- reshape_data(scores_df, injection_type)
 
+
+      ##################
+      # Raw scores
+      ##################
       gscores_df <- subset(scores_df, method == "guidance_seq_scr")
       nscores_df <- subset(scores_df, method == "normd_dx_mod_seq_scr")
 
-      scores_df <- merge(gscores_df, nscores_df,
+      plot_scores_df <- merge(gscores_df, nscores_df,
         by=c("rand", "unused", "msa", "seqid", "Actual"))
-      colnames(scores_df) <- c("rand", "unused", "msa", "seqid", "Actual", 
-                      "gscore", "method.x", "nscore", "method.y")
-      #options(width=10000)
-      #print(scores_df)
-      #q()
+      colnames(plot_scores_df) <- c("rand", "unused", "msa", "seqid", "Actual", 
+                      "gscore", "method_x", "nscore", "method_y")
 
-      plot_scores_in_2d(scores_df, 
+      plot_scores_in_2d(plot_scores_df, 
         info=list(sample_id=sample_id,
-                  injection_type=injection_type))
+                  injection_type=injection_type,
+                  method_x=plot_scores_df[1, "method_x"],
+                  method_y=plot_scores_df[1, "method_y"]))
+
+      ##################
+      # Balanced scores
+      ##################
+      gscores_df <- subset(scores_df, method == "guidance_balanced")
+      nscores_df <- subset(scores_df, method == "normd_balanced")
+      plot_scores_df <- merge(gscores_df, nscores_df,
+        by=c("rand", "unused", "msa", "seqid", "Actual"))
+      colnames(plot_scores_df) <- c("rand", "unused", "msa", "seqid", "Actual", 
+                      "gscore", "method_x", "nscore", "method_y")
+
+      plot_scores_in_2d(plot_scores_df, 
+        info=list(sample_id=sample_id,
+                  injection_type=injection_type,
+                  method_x=plot_scores_df[1, "method_x"],
+                  method_y=plot_scores_df[1, "method_y"]))
     })
   }
 }
