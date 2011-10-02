@@ -188,7 +188,8 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
 
   scores_df <- read.table(sample_file)
   colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
-  injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
+  #injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
+  injection_types <- sort(unique(scores_df[,'rand']))
 
 
 
