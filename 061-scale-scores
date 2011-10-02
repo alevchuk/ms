@@ -35,12 +35,11 @@ dir.create(OUT_DIR, showWarnings=F)
 
 
 UPSTREAM1 <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
-UPSTREAM2 <- paste(EXPERIMENT_NAME, "/037-plot-matthews-max-data-out", sep="")
 
 
 # How to use this script
 usage_and_quit <- function() {
-  cat(paste(script_name, " Normalizes scores accoring to a cutoff", "\n\n"))
+  cat(paste(script_name, " Scales scores to the range of each MSA", "\n\n"))
   cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
   cat(paste(
     "Required Arguments",
@@ -68,28 +67,13 @@ SCORES_SAMPLE_FILES <- sapply(SH(paste(
     }
 )
 
-CUTOFFS_SAMPLE_FILES <- sapply(SH(paste(
-  "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE, "*-cutoffs",
-  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
-  sep="")), function(x) {
-      strsplit(x, "\t")[[1]]
-    }
-)
-
-
-
-# Merge
-CUTOFFS_SAMPLE_FILES <-
-  data.frame(cutoffs_filename=CUTOFFS_SAMPLE_FILES[1,],
-  sample_id=CUTOFFS_SAMPLE_FILES[2,], stringsAsFactors=F)
-rownames(CUTOFFS_SAMPLE_FILES) <- c()
-
 SCORES_SAMPLE_FILES <-
   data.frame(scores_filename=SCORES_SAMPLE_FILES[1,],
   sample_id=SCORES_SAMPLE_FILES[2,], stringsAsFactors=F)
 rownames(SCORES_SAMPLE_FILES) <- c()
 
-SAMPLES_DF <- merge(SCORES_SAMPLE_FILES, CUTOFFS_SAMPLE_FILES, by="sample_id")
+
+SAMPLES_DF <- SCORES_SAMPLE_FILES
 
 options(width=1000)
 
@@ -102,19 +86,11 @@ library(ggplot2)
 
 # Itterate over every sample
 for (sample_id in SAMPLES_DF$sample_id) {
-  cutoffs_filename <-
-    SAMPLES_DF[SAMPLES_DF$sample_id==sample_id,]$cutoffs_filename
   scores_filename <-
     SAMPLES_DF[SAMPLES_DF$sample_id==sample_id,]$scores_filename
 
   print(sample_id)
-  print(cutoffs_filename)
   print(scores_filename)
-
-  cutoffs_df <- read.table(cutoffs_filename)
-  names(cutoffs_df) <-
-    c('rand', 'cutoff', 'scr_method', 'truth', 'msa')
-    # E.g.:  0.05     2.788995e-01   guidance_seq_scr Known  COG0177
 
   scores_df <-
     read.table(SAMPLES_DF[SAMPLES_DF$sample_id==sample_id,"scores_filename"])
@@ -123,16 +99,14 @@ for (sample_id in SAMPLES_DF$sample_id) {
   # Methods: guidance_seq_scr normd_dx_mod_seq_scr
 
 
-  #balanced_scores_df <- data.frame()
-  outfile <- paste(OUT_DIR, "/", sample_id, "-balanced-scores-tab", sep="")
+  outfile <- paste(OUT_DIR, "/", sample_id, "-scaled-scores-tab", sep="")
   outfile_connection <- file(outfile, 'w')
 
 
-  for (msa in unique(cutoffs_df$msa)) {
+  for (msa in unique(scores_df$msa)) {
   local({
     print(msa)
 
-    cutoffs_df <- cutoffs_df[cutoffs_df$msa==msa,]
     scores_df <- scores_df[scores_df$msa==msa,]
     #quit()
 
@@ -140,39 +114,25 @@ for (sample_id in SAMPLES_DF$sample_id) {
     #quit()
 
     #print(n_scores)
-    #print(cutoffs_df)
     #cat("\n")
 
     #gg_df <- data.frame()
 
-    #for (rand in unique(cutoffs_df$rand)) {
     for (rand in unique(scores_df$rand)) {
     local({
       #print(rand)
 
-      cutoffs_df <- cutoffs_df[cutoffs_df$rand==rand,]
       scores_df <- scores_df[scores_df$rand==rand,]
 
       n_scores <- sort(scores_df[grep("^normd", scores_df$scr_method), 'scr'])
       g_scores <-
         sort(scores_df[grep("^guidance", scores_df$scr_method), 'scr'])
 
-      #print(grep("^guidance", cutoffs_df$scr_method))
       ###print(n_scores)
-      ###print(cutoffs_df)
       ###cat("\n")
 
-      for (m in unique(cutoffs_df$scr_method)) {
-        method_Ts <- cutoffs_df[cutoffs_df$scr_method == m,]
-
-        #print(unique(method_Ts$truth))
-        #q()
-
+      for (m in unique(scores_df$scr_method)) {
         for (t in 'Ab Initio') { # unique(method_Ts$truth)) {
-          T <- method_Ts[method_Ts$truth == t,]$cutoff
-
-          ## Do you really need to sort?
-          #scores <- sort(scores_df[scores_df$scr_method == m, 'scr'])
           scores <- scores_df[scores_df$scr_method == m, 'scr']
           
           # to 0..1
@@ -181,35 +141,11 @@ for (sample_id in SAMPLES_DF$sample_id) {
           
           max1 <- max(scores)
           scores <- scores / max1
-          
-          T <- T - min1
-          T <- T / max1
-          ### 
-          ### T
-         
-          ### cat("11111111111111\n")
-          ### print(sort(scores)) 
-          ### cat("oooooooooooooo\n")
-          ### 
-          scores[scores > T] <- 1 - (1 - scores[scores > T]) / (2 - 2 * T)
-          scores[scores <= T] <- scores[scores <= T] / (2 * T)
-
-
-          ### 
-          ### cat("222222222222222\n")
-          ### print(sort(scores)) 
-          ### cat("oooooooooooooo\n")
-
-          #print(msa)
-          #print(scores_df)
-          #print(cutoffs_df)
-          #cat("\n")
 
           scores_df[scores_df$scr_method == m, 'scr'] <- scores
         }
       }
 
-      #balanced_scores_df <<- rbind(balanced_scores_df, scores_df)
       write.table(file=outfile_connection, scores_df,
         sep="\t", row.names=F, col.names=F, append=T)
     })

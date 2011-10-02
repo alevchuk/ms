@@ -34,6 +34,7 @@ EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
 UPSTREAM2 <- paste(EXPERIMENT_NAME, "/060-balance-scores-data-out", sep="")
+UPSTREAM3 <- paste(EXPERIMENT_NAME, "/061-scale-scores-data-out", sep="")
 
 dir.create(OUT_DIR, showWarnings=FALSE)
 
@@ -61,16 +62,23 @@ if(length(script_args) != 1) {
 SAMPLE_SIZE  <- script_args[[1]]
 
 
-# Porject conventions
+# Project conventions
 SAMPLE_FILES <- sh(paste(
-  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores", sep=""))
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "-*-seq-scores", sep=""))
 SAMPLE_FILES_BALANCED <- sh(paste(
   "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE,
   "*-balanced-scores-tab", sep=""))
+SAMPLE_FILES_SCALED <- sh(paste(
+  "ls ", UPSTREAM3, "/sample-size", SAMPLE_SIZE,
+  "*-scaled-scores-tab", sep=""))
 
 
+# TODO: merge by sample_id
 ALL_SCORES <-
-  data.frame(scores=SAMPLE_FILES, balanced_scores=SAMPLE_FILES_BALANCED)
+  data.frame(
+    scores=SAMPLE_FILES,
+    balanced_scores=SAMPLE_FILES_BALANCED,
+    scaled_scores=SAMPLE_FILES_SCALED)
 
 
 
@@ -150,28 +158,44 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
 
   sample_file <- as.character(ALL_SCORES[sample_i,]$scores)
   balanced_sample_file <- as.character(ALL_SCORES[sample_i,]$balanced_scores)
+  scaled_sample_file <- as.character(ALL_SCORES[sample_i,]$scaled_scores)
+
   print(sample_file)
   print(balanced_sample_file)
+  print(scaled_sample_file)
+  #q()
 
   scores_df <- read.table(sample_file)
   colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
-  injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
+  #injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
+  injection_types <- sort(unique(scores_df[,'rand']))
+
 
   balanced_scores_df <- read.table(balanced_sample_file)
   colnames(balanced_scores_df) <-
     c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
-
   balanced_scores_df$method <- as.character(balanced_scores_df$method)
-
   balanced_scores_df[balanced_scores_df$method ==
     "guidance_seq_scr", "method"] <- "guidance_balanced"
   balanced_scores_df[balanced_scores_df$method ==
     "normd_dx_mod_seq_scr", "method"] <- "normd_balanced"
 
+
+
+  scaled_scores_df <- read.table(scaled_sample_file)
+  colnames(scaled_scores_df) <-
+    c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+  scaled_scores_df$method <- as.character(scaled_scores_df$method)
+  scaled_scores_df[scaled_scores_df$method ==
+    "guidance_seq_scr", "method"] <- "guidance_scaled"
+  scaled_scores_df[scaled_scores_df$method ==
+    "normd_dx_mod_seq_scr", "method"] <- "normd_scaled"
+
+
   #print(balanced_scores_df[1:100,])
   #print(scores_df[1:100,])
   #q()
-  scores_df  <- rbind(scores_df, balanced_scores_df)
+  scores_df  <- rbind(scores_df, balanced_scores_df, scaled_scores_df)
   #print(scores_df)
   #q()
 
@@ -200,6 +224,3 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
     })
   }
 }
-
-
-
