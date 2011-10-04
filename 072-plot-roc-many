@@ -1,0 +1,133 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Primary locations
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+UPSTREAM_DIR <-
+  paste(EXPERIMENT_NAME, "070-build-roc-classifer-data-out", sep="/")
+OUT_DIR <- paste(EXPERIMENT_NAME, script_name, sep="/")
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " plots box plots per msa", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
+
+library(ROCR)
+dir.create(OUT_DIR, showWarnings=F)
+
+load(paste(UPSTREAM_DIR, "roc-all.Rdata"    , sep="/"))
+#ls()
+# q()
+
+
+for (roc_df_id in 1:length(ROC_DF)) {
+
+  roc_df <- ROC_DF[roc_df_id,]
+  rocr <- ROCR_LIST[[roc_df$rocr_id]]
+
+  # TODO: Move the up to 071-plot-roc
+  w_1 <-  4; c_1 <- 2;
+  w_2 <- 16; c_2 <- 9;
+  w_3 <-  8; c_3 <- 3;
+  w_4 <- 16; c_4 <- 8;
+  w_5 <-  2; c_5 <- 4;
+  w_new <-  1; c_new <- 1;
+  
+  png(paste(OUT_DIR, paste("roc-rand", roc_df$random_ratio,
+     "-", roc_df$rocr_id, ".png", sep=""), sep="/"),
+     width = 2750, height = 2750, units = "px", type="cairo")
+  
+  par(mar=c(5, 5, 2, 2))
+  par(cex.lab=2, cex.axis=1.5, font.main=12)
+  
+  #plot(performance(p_4,"tpr","fpr"), col=c_4, lwd=w_4)
+  #plot(performance(p_2,"tpr","fpr"), col=c_2, lwd=w_2, add=T)
+  
+  
+  #print(ROC_DF)
+  #q()
+  
+  
+  
+  p4plot <- performance(rocr, "tpr", "fpr")
+  plot(p4plot, col=c_1, lwd=w_1, yaxt='n')
+  
+  
+  #plot(performance(p_3,"tpr","fpr"), col=c_3, lwd=w_3, add=T)
+  #plot(performance(p_5,"tpr","fpr"), col=c_5, lwd=w_5, add=T)
+  #plot(performance(p_new,"tpr","fpr"), col=c_new, lwd=w_new, add=T)
+  axis(1, c())
+  axis(2, c(0, 1:20/10))
+  axis(3, c(0, 1:20/10))
+  box()
+  
+  #grid(col="black") #lty=3, col="gray")
+  abline( v=0:100/100, h=0:100/100, lty=3, col="gray") 
+  
+  #leg.txt <- c(
+  #  l_1
+  #  #,l_2 
+  #  ,l_3
+  #  #,l_4
+  #  ,l_5
+  #  ,l_new
+  #)
+  
+  #legend("bottomright", inset=0.037, leg.txt, 
+  #  title="auc = area under the curve",
+  #  col = c(c_1,c_3,c_5,c_new),
+  #  lwd = c(w_1,w_3,w_5,w_new), cex=1.5)
+
+
+  legend("bottomright", inset=0.037, as.character(roc_df$leg_label),
+    title=paste("auc = area under the curve", roc_df$random_ratio),
+    col = c(c_1), lwd = c(w_1), cex=1.5)
+  dev.off()
+}

@@ -109,12 +109,19 @@ for(sample_file in sample_list[order(sample_list)]) {
 
       # Append
       ROCR_LIST <<- c(ROCR_LIST, pred)
-      ROC_DF <<- rbind(ROC_DF,
-        cbind(leg_label, random_ratio, as.character(method)[[1]],
-              length(ROCR_LIST), sample_id))
-      colnames(ROC_DF) <- c("leg_label", "random_ratio", "scoring_method",
-                             "rocr_id", "sample_id")
-                           # TODO: 2 show up as V3, V4
+      ROC_DF <<- rbind(ROC_DF, data.frame(
+        leg_label=leg_label,
+        random_ratio=random_ratio,
+        scoring_method=as.character(method)[[1]],
+        rocr_id=length(ROCR_LIST),
+        sample_id=sample_id)
+      )
+        
+      #   #cbind(leg_label, random_ratio, as.character(method)[[1]],
+      #   #      length(ROCR_LIST), sample_id))
+      # colnames(ROC_DF) <- c("leg_label", "random_ratio", "scoring_method",
+      #                        "rocr_id", "sample_id")
+      #                      # TODO: 2 show up as V3, V4
     
       ## Writing to separate files 
       #out_file <-
