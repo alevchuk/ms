@@ -67,10 +67,34 @@ load(paste(UPSTREAM_DIR, "roc-all.Rdata"    , sep="/"))
 # q()
 
 
-for (roc_df_id in 1:length(ROC_DF)) {
+options(width=500)
+#print(ROC_DF)
+#q()
+ 
 
-  roc_df <- ROC_DF[roc_df_id,]
-  rocr <- ROCR_LIST[[roc_df$rocr_id]]
+
+
+
+ 
+samples <- unique(ROC_DF$sample_id)
+for (s in samples) {
+local({
+ROC_DF <- subset(ROC_DF, sample_id == s)
+
+
+
+injection_ratios <- unique(ROC_DF$random_ratio)
+for(inj in injection_ratios) {
+local({
+ROC_DF <- subset(ROC_DF, random_ratio == inj)
+
+
+  #print(paste(s, inj, m))
+
+  sample_id <- s
+  print(sample_id)
+
+  #roc_df$scoring_method
 
   # TODO: Move the up to 071-plot-roc
   w_1 <-  4; c_1 <- 2;
@@ -80,54 +104,61 @@ for (roc_df_id in 1:length(ROC_DF)) {
   w_5 <-  2; c_5 <- 4;
   w_new <-  1; c_new <- 1;
   
-  png(paste(OUT_DIR, paste("roc-rand", roc_df$random_ratio,
-     "-", roc_df$rocr_id, ".png", sep=""), sep="/"),
-     width = 2750, height = 2750, units = "px", type="cairo")
+  png(paste(OUT_DIR, paste("sample-size",
+     SAMPLE_SIZE, "-id", s,
+     "-rand", sprintf("%.2f", inj),
+     ".png", sep=""), sep="/"),
+     width = 1750, height = 1750, units = "px", type="cairo")
   
-  par(mar=c(5, 5, 2, 2))
+  par(mar=c(10, 10, 5, 5), mgp=c(5, 1, 0))
+  # MGP: distance of the axis labels
+  #      distance of the tick mark labels
+  #      distance of the tick mark symbols
   par(cex.lab=2, cex.axis=1.5, font.main=12)
   
-  #plot(performance(p_4,"tpr","fpr"), col=c_4, lwd=w_4)
-  #plot(performance(p_2,"tpr","fpr"), col=c_2, lwd=w_2, add=T)
   
   
-  #print(ROC_DF)
-  #q()
+  plot(c(0,1), c(1,0),
+    xlab = "1 - True Negative Rate",
+    ylab = "True Positive Rate",
+    axes = FALSE)
+  scoring_methods <- as.character(unique(ROC_DF$scoring_method))
+  for (m in scoring_methods) {
+  local({
+  ROC_DF <- subset(ROC_DF, scoring_method == m)
+    
+    rocr <- ROCR_LIST[[ROC_DF$rocr_id]]
+    p4plot <- performance(rocr, "tpr", "fpr")
+    plot(p4plot, col=c_1, lwd=w_1, add=T)
+    ### , axes = FALSE) # the axes option has no effect
+  
+    #plot(performance(p_3,"tpr","fpr"), col=c_3, lwd=w_3, add=T)
+  })
+  }
+
   
   
-  
-  p4plot <- performance(rocr, "tpr", "fpr")
-  plot(p4plot, col=c_1, lwd=w_1, yaxt='n')
-  
-  
-  #plot(performance(p_3,"tpr","fpr"), col=c_3, lwd=w_3, add=T)
-  #plot(performance(p_5,"tpr","fpr"), col=c_5, lwd=w_5, add=T)
-  #plot(performance(p_new,"tpr","fpr"), col=c_new, lwd=w_new, add=T)
-  axis(1, c())
-  axis(2, c(0, 1:20/10))
-  axis(3, c(0, 1:20/10))
+  axis(side=1, c())
+  #axis(side=2, c(0, 1:40/40))
+  #axis(side=3, c(0, 1:40/40))
+  axis(2,signif(0:50/50, 2), las=2)
+  axis(3,signif(0:50/50, 2), las=2)
   box()
   
   #grid(col="black") #lty=3, col="gray")
-  abline( v=0:100/100, h=0:100/100, lty=3, col="gray") 
+  abline(v=0:100/100, h=0:100/100, lty=3, col="gray") 
   
-  #leg.txt <- c(
-  #  l_1
-  #  #,l_2 
-  #  ,l_3
-  #  #,l_4
-  #  ,l_5
-  #  ,l_new
-  #)
   
-  #legend("bottomright", inset=0.037, leg.txt, 
-  #  title="auc = area under the curve",
-  #  col = c(c_1,c_3,c_5,c_new),
-  #  lwd = c(w_1,w_3,w_5,w_new), cex=1.5)
-
-
-  legend("bottomright", inset=0.037, as.character(roc_df$leg_label),
-    title=paste("auc = area under the curve", roc_df$random_ratio),
+  legend("bottomright", inset=0.037, as.character(ROC_DF$leg_label[[1]]),
+    title=paste("Injection Amount:", inj, "\n",
+                "auc = area under the curve"),
     col = c(c_1), lwd = c(w_1), cex=1.5)
   dev.off()
+  
+  
+  })
+  }
+
+})
 }
+
