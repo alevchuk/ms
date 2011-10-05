@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+BLASTALL="/usr/bin/blastall"
+
+set -e
+set -u
+
+source ./api/pipeline.sh
+
+if [ $# != 1 ] && [ $# != 2 ]; then
+  echo "Usage: $0 <sample-size>  [-s]" >&2
+  echo "" >&2
+  echo "  <sample-size>        how many alignments should be in 1 sample" >&2
+  echo "" >&2
+  echo "  -f                   force always runing, never skip any steps" >&2
+  exit 1
+fi
+
+# Arguments
+SAMPLE_SIZE=$1                              # sample size (mandatory)
+set +u
+[ "$2" == '-f' ] && export ALWAYS_RUN=true  # skip steps (optional)
+[ -n "$2" ] && [ "$2" != '-f' ] && (echo "Invalid option $3"; exit 1)
+set -u
+
+#NORMD_RUN_TEMPLATE="$0-scripts/run.sh.template"
+
+EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
+
+UPSTREAM="./$EXPERIMENT_NAME/008-sample-data-out"
+
+#RAM_DIR="/dev/shm/$EXPERIMENT_NAME-run-blast"
+DATA_IN="./$EXPERIMENT_NAME/$0-data-in"
+DATA_OUT="./$EXPERIMENT_NAME/$0-data-out"
+
+
+#mkdir -p $DATA_IN $DATA_OUT 2> /dev/null && true
+mkdir -p $DATA_OUT $DATA_IN 2> /dev/null && true
+
+#sample-size100-id5-list-tab/
+#sample-size100-id5-list-tab-rand0.05-tab/
+ls $UPSTREAM/sample-size$SAMPLE_SIZE-id*-list-tab*/*FASTA.tab |
+while read f; do
+
+  SAMPLE_AND_MSA_NAME=$(echo "$f" | awk -F/ '{print $4 "-" $5}')
+
+  fasta=$DATA_IN/$SAMPLE_AND_MSA_NAME-blastable-fasta
+  #echo $fasta
+  cat $f | awk '{print ">" $1 "\n" $2}' | # to fasta
+    tr -d '-' | # remove gaps
+    sed 's/[|]/__/g' | # translate pipes as double underscores
+    cat > $fasta
+
+  formatdb -i $fasta -p T -o
+  $BLASTALL -p blastp -i  $fasta -d $fasta -m 8 -e 0.1 > $fasta-m8
+
+
+
+  #$DATA_OUT/$SAMPLE_AND_MSA_NAME-m8
+
+  #out_sh="$DATA_IN/$SAMPLE_AND_MSA_NAME.sh"
+  #cat $NORMD_RUN_TEMPLATE |
+  #  sed "s|%%DATA_OUT%%|$DATA_OUT/$SAMPLE_AND_MSA_NAME|g" |
+  #  sed "s|%%WD%%|`pwd`|g" |
+  #  sed "s|%%MSA_TAB%%|$msa_tab|g" |
+  #  sed "s|%%SAMPLE_AND_MSA_NAME%%|$SAMPLE_AND_MSA_NAME|g" |
+  #  sed "s|%%RAM_DIR%%|$RAM_DIR/$SAMPLE_AND_MSA_NAME|g" |
+  #    cat > $out_sh
+  #  chmod +x $out_sh
+
+done

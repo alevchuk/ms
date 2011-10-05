@@ -78,8 +78,20 @@ for seed in `seq $N`; do
     mkdir -p "$DATA_OUT/$sample_list-tab-new" 2> /dev/null && true
     cat "$DATA_OUT/$sample_list" | while read msa_line; do
       msa_tab_filename=$(printf "$msa_line" | awk '{print $1}')
-      cp "$UPSTREAM_DATA/all-alignments-tab/$msa_tab_filename" \
-        "$DATA_OUT/$sample_list-tab-new"
+
+      msa_tab_filepath="$UPSTREAM_DATA/all-alignments-tab/$msa_tab_filename"
+
+      # Add prefix to ID to make it unique within the tab file
+      cat "$msa_tab_filepath" |
+      ruby -e 'c = 1
+               while line = STDIN.gets
+                 line.chomp
+                 id,seq = line.split "\t"
+                 puts "row" + c.to_s.rjust(3, "0") + "_#{id}\t#{seq}"
+                 c += 1
+               end' > \
+      "$DATA_OUT/$sample_list-tab-new/$msa_tab_filename"
+
     done
     rm -rf "$DATA_OUT/$sample_list-tab"
     mv "$DATA_OUT/$sample_list-tab"{-new,}
@@ -112,14 +124,21 @@ for seed in `seq $N`; do
 
     cat "$DATA_OUT/$sample_list-tab-new/raw" | ruby -e "
       open_files = {}
+      c = Hash.new(0) # Unique id counter
       while line = STDIN.gets
         msa_name, seq_id, seq = line.split(\"\\t\")
+
+        # Add prefix to ID to make it unique within the tab file
+        c[msa_name] += 1
+        seq_id = \"row\" + c[msa_name].to_s.rjust(3, \"0\") + \"_#{seq_id}\"
+
         open_files[msa_name] = \
           File.open(\"$DATA_OUT/$sample_list-tab-new/#{msa_name}\",'w') if
             !open_files.keys.include?(msa_name)
         open_files[msa_name].puts \"#{seq_id}\\t#{seq}\"
       end
     "
+
     
     rm -rf "$DATA_OUT/$sample_list-tab"
     mv "$DATA_OUT/$sample_list-tab"{-new,}
