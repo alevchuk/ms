@@ -1,0 +1,71 @@
+#!/usr/bin/env Rscript
+
+# GROUPBALANCER is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+options(width=1000) # use less -S
+
+# To run Bash commands
+SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <-
+  sub("--file=", "", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " Print the desired subset of a scores_df", "\n\n"))
+  cat(paste("Usage:", script_name, "<scores_df> <r-code>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <scores_df>    A scores data frame file",
+    "  <r-expression> Any R code used to subst the data",
+    "",
+    "Example:",
+    "  cdf-subset file.scdf \"rand==0.05 & method=='guidance'\" ",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1 && length(script_args) != 2) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+SCDF_FILE <- script_args[[1]]
+R_EXPR    <- script_args[[2]]
+
+score_df  <- read.table(SCDF_FILE)
+names(score_df) <- c('scr', 'rand', 'unused', 'msa', 'scr_method', 'seqid')
+
+score_df <- score_df[order(-score_df$scr),]
+
+# For example:
+#subset(score_df, rand==0.05 & msa=="PRK11574")
+
+template <- "subset(score_df, %s)"
+print(eval(parse(text=sprintf(template, R_EXPR))))
