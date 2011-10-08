@@ -43,6 +43,7 @@ set -u
 EXPERIMENT_NAME=$(ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2)
 GUIDANCE_UPSTREAM_DIR="./$EXPERIMENT_NAME/010-run-guidance-data-out"
 NORMD_UPSTREAM_DIR="./$EXPERIMENT_NAME/026-run-normd-data-out"
+BLAST_UPSTREAM_DIR="./$EXPERIMENT_NAME/028-run-blast-data-out"
 
 DATA_OUT="$EXPERIMENT_NAME/$0-data-out"
 
@@ -133,6 +134,59 @@ function callback {
 
   #done
 
+
+
+
+  #
+  # BLAST scores
+  #
+
+  find $BLAST_UPSTREAM_DIR -name *-fasta-m8-scores |
+  # trial-cdd-2011-08-v2.31-uniprot-2011-08/
+  #028-run-blast-data-out/
+  #sample-size100-id503-list-tab-rand0.25-tab-ID50_pfam11445.FASTA.tab-
+  #blastable-fasta-m8-scores
+  ruby -e '
+    open_out_files = {}
+    while line = STDIN.gets
+
+      line =~ /(sample-size.*-id.*)-list/ ?
+        (sample = $1) : (raise "Could not parse sample out of #{line}")
+
+      line =~ /sample-.*tab-([^-]+).FASTA.tab/ ?
+        (msa = $1) : (raise "Could not parse msa out of #{line}")
+
+      if line =~ /sample-size.*-rand([^-]*)-/
+        rand = $1
+      elsif line =~ /sample-size.*-list-tab-#{msa}/
+        rand = "0.00"
+      else
+        raise "Could not parse rand out of #{line}"
+      end
+
+      out_file_name = "#{ARGV[0]}-new/#{sample}-seq-scores"
+
+      ## Testing / Debugging
+      #p [sample, msa, rand, out_file_name]
+
+      # Do not Append
+      open_out_files[out_file_name] = File.open(out_file_name, "w") unless 
+        open_out_files.keys.include? out_file_name
+
+      in_file_name = line.chomp
+      File.open(in_file_name) do |f|
+        f.each do |line|
+          seq, score = line.chomp.split("\t")
+          seq.gsub! "\"" "" # Remve quotes if any
+
+          open_out_files[out_file_name].puts \
+            [score,rand,"-",msa,"blast",seq].join("\t")
+        end
+      end
+    end
+  ' $DATA_OUT
+
+
  
   #
   # GUIDANCE Per-sequence scores
@@ -180,7 +234,8 @@ function callback {
     
       file_name = "#{ARGV[0]}-new/#{sample}-seq-scores"
 
-      open_out_files[file_name] = File.open(file_name, "w") unless 
+      # Append because BLAST scores are already there
+      open_out_files[file_name] = File.open(file_name, "a") unless 
         open_out_files.keys.include? file_name
 
       open_out_files[file_name].puts \
@@ -188,41 +243,6 @@ function callback {
     end
   ' $DATA_OUT
 
-  #while read line; do
-  #  sample=$(echo "$line" | cut -f1)
-  #  msa=$(echo "$line" | cut -f2)
-  #  rand=$(echo "$line" | cut -f3)
-  #  seq=$(echo "$line" | cut -f4)
-  #  score=$(echo "$line" | cut -f5)
-
-  #  # SCORE RAND_AMMOUNT UNUSED MSA METHOD SEQ 
-  #  echo -e "$score\t$rand\t-\t$msa\tguidance_seq_scr\t$seq" \
-  #   >> $DATA_OUT-new/$sample-seq-scores
-  #
-
-  #  #sample=$(expr "$line" : '.*\(sample-size.*-id.*\)-list') || (
-  #  #  echo "error: could not parse out sample in \"$line\""; exit 1)
-  #
-  #  #msa=$(expr "$line" : '.*sample-.*-nogaps/\(.*\).FASTA.tab') || (
-  #  #  echo "ERROR: Could not parse out msa in \"$line\""; exit 1)
-  #
-  #  #rand=$(expr "$line" : '.*sample-size.*-id.*-lis\(.*\)-tab-nogaps') || (
-  #  #  echo "error: could not parse out rand in \"$line\""; exit 1)
-  #  #if [ "$rand" == "t" ]; then
-  #  #  rand="0.00"
-  #  #else
-  #  #  rand=$(expr "$rand" : 't-tab-rand\(.*\)') || (
-  #  #    echo "error: could not parse out rand in \"$line\""; exit 1)
-  #  #fi
-
-  #  #payload=$(expr "$line" : '.*_seq.scr_with_Names:\(.*\)$') || (
-  #  #  echo "ERROR: Could not parse out payload in \"$line\""; exit 1)
-  #
-  #  ## Parse payload 
-  #  #score=$(echo "$payload" | awk '{print $2}' )
-  #  #seq=$(echo "$payload" | awk '{print $1}' )
-  #
-  #done
 
 
   #
@@ -268,38 +288,6 @@ function callback {
     end
   ' $DATA_OUT
 
-  #while read line; do
-  #  sample=$(echo "$line" | cut -f1)
-  #  msa=$(echo "$line" | cut -f2)
-  #  rand=$(echo "$line" | cut -f3)
-  #  filename=$(echo "$line" | cut -f4)
-
-  #  cat $filename | while read score_line; do
-  #    seq=$(echo "$score_line" | awk '{print $1}')
-  #    score=$(echo "$score_line" | awk '{print $2}')
-
-  #    # SCORE RAND_AMMOUNT UNUSED MSA METHOD SEQ
-  #    echo -e "$score\t$rand\t-\t$msa\tnormd_dx_mod_seq_scr\t$seq" >> \
-  #      $DATA_OUT-new/$sample-seq-scores # Add to the same file as GUID..
-  #  done
-
-  #  #sample=$(expr "$line" : '.*\(sample-size[0-9]*-.*\)-list-tab') || (
-  #  #  echo "ERROR: Could not parse out sample in \"$line\""; exit 1)
-
-  #  #rand=$(expr "$line" : '.*sample-size.*-id.*-lis\(.*\)-tab') || (
-  #  #  echo "error: could not parse out rand in \"$line\""; exit 1)
-  #  #if [ "$rand" == "t" ]; then
-  #  #  rand="0.00"
-  #  #else
-  #  #  rand=$(expr "$rand" : 't-tab-rand\(.*\)') || (
-  #  #    echo "error: could not parse out rand in \"$line\""; exit 1)
-  #  #fi
-
-  #  #msa=$(expr "$line" : '.*-tab-\([^.]*\).FASTA.tab') || (
-  #  #  echo "ERROR: Could not parse out msa in \"$line\""; exit 1)
-
-
-  #done
 
    
   #

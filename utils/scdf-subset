@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-options(width=1000) # use less -S
+options(width=1000, max.print=100000000) # use less -S
 
 # To run Bash commands
 SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
@@ -57,12 +57,18 @@ if(length(script_args) != 1 && length(script_args) != 2) {
 }
 
 SCDF_FILE <- script_args[[1]]
-R_EXPR    <- script_args[[2]]
+
+if (length(script_args) == 2) {
+  R_EXPR    <- script_args[[2]]
+} else {
+  R_EXPR    <- "scr < 0 | scr > 0"
+}
 
 score_df  <- read.table(SCDF_FILE)
 names(score_df) <- c('scr', 'rand', 'unused', 'msa', 'scr_method', 'seqid')
 
-score_df <- score_df[order(-score_df$scr),]
+score_df <- score_df[order(-score_df$scr),
+  c('scr', 'seqid', 'rand', 'unused', 'msa', 'scr_method')]
 
 # For example:
 #subset(score_df, rand==0.05 & msa=="PRK11574")
