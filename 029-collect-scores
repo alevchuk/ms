@@ -164,7 +164,7 @@ function callback {
         raise "Could not parse rand out of #{line}"
       end
 
-      out_file_name = "#{ARGV[0]}-new/#{sample}-seq-scores"
+      out_file_name = "#{ARGV[0]}/#{sample}-seq-scores"
 
       ## Testing / Debugging
       #p [sample, msa, rand, out_file_name]
@@ -184,7 +184,7 @@ function callback {
         end
       end
     end
-  ' $DATA_OUT
+  ' $DATA_OUT-new
 
 
  
@@ -232,7 +232,7 @@ function callback {
         raise "Could not parse seq and score out of #{line}"
       end
     
-      file_name = "#{ARGV[0]}-new/#{sample}-seq-scores"
+      file_name = "#{ARGV[0]}/#{sample}-seq-scores"
 
       # Append because BLAST scores are already there
       open_out_files[file_name] = File.open(file_name, "a") unless 
@@ -241,7 +241,7 @@ function callback {
       open_out_files[file_name].puts \
         [score,rand,"-",msa,"guidance_seq_scr",seq].join("\t")
     end
-  ' $DATA_OUT
+  ' $DATA_OUT-new
 
 
 
@@ -270,7 +270,7 @@ function callback {
         raise "Could not parse rand out of #{line}"
       end
 
-      out_file_name = "#{ARGV[0]}-new/#{sample}-seq-scores"
+      out_file_name = "#{ARGV[0]}/#{sample}-seq-scores"
 
       # Append because GUIDANCE scores are already there
       open_out_files[out_file_name] = File.open(out_file_name, "a") unless 
@@ -286,7 +286,7 @@ function callback {
         end
       end
     end
-  ' $DATA_OUT
+  ' $DATA_OUT-new
 
 
    

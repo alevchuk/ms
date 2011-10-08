@@ -111,7 +111,11 @@ for(sample_file in SAMPLE_FILES) {
     local({
       scores_df <- scores_df[scores_df[,'method'] == scoring_method,]
 
-      cat(scoring_method, "\t", sep="")
+      if (nchar(scoring_method) < 15) {
+        cat(scoring_method, "\t\t\t", sep="")
+      } else {
+        cat(scoring_method, "\t", sep="")
+      }
       for(injection_type in injection_types) {
         local({
           scores_df <- scores_df[scores_df[,'rand'] == injection_type,]
