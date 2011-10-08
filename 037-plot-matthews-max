@@ -61,7 +61,9 @@ SAMPLE_SIZE  <- script_args[[1]]
 
 # Porject conventions
 SAMPLE_FILES <- SH(paste(
-  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores", sep=""))
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores",
+  " | grep -v id1", # This line says: "Remove ME!"
+  sep=""))
 
 library(ggplot2)
 
@@ -391,7 +393,7 @@ plot_matthews_max <- function(scores_df, injection_types,
             both[,subject_scr][both[,subject_scr] < i][[1]]
           })
 
-        print(subject_closest_score)
+        #print(subject_closest_score)
         subject_cut_gaps <- max_matt_df$subject_cutoff - subject_closest_score
         subject_winner_loc <- which(subject_cut_gaps == max(subject_cut_gaps))
 
@@ -410,7 +412,7 @@ plot_matthews_max <- function(scores_df, injection_types,
             both[,base_truth_scr][both[,base_truth_scr] < i][[1]]
           })
 
-        print(bt_closest_score)
+        #print(bt_closest_score)
         bt_cut_gaps <- max_matt_df$bt_cutoff - bt_closest_score
         bt_winner_loc <- which(bt_cut_gaps == max(bt_cut_gaps))
 

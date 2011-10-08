@@ -132,19 +132,19 @@ for (sample_id in SAMPLES_DF$sample_id) {
       ###cat("\n")
 
       for (m in unique(scores_df$scr_method)) {
-        for (t in 'Ab Initio') { # unique(method_Ts$truth)) {
-          scores <- scores_df[scores_df$scr_method == m, 'scr']
-          
-          # to 0..1
-          min1 <- min(scores)
-          scores <- scores - min1
-          
-          max1 <- max(scores)
-          scores <- scores / max1
+        scores <- scores_df[scores_df$scr_method == m, 'scr']
+        
+        # to 0..1
+        min1 <- min(scores)
+        scores <- scores - min1
 
-          scores_df[scores_df$scr_method == m, 'scr'] <- scores
+        max1 <- max(scores)
+        if(max1 != 0) { # If all the scores are same
+          scores <- scores / max1
         }
-      }
+
+        scores_df[scores_df$scr_method == m, 'scr'] <- scores
+      } 
 
       write.table(file=outfile_connection, scores_df,
         sep="\t", row.names=F, col.names=F, append=T)

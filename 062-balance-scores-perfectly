@@ -139,7 +139,7 @@ for (sample_id in SAMPLES_DF$sample_id) {
     #for (rand in 0.05) {
     for (rand in setdiff(unique(scores_df$rand), 0)) {
     local({
-      print(rand)
+      #print(rand)
       cutoffs_df <- cutoffs_df[cutoffs_df$rand==rand,]
       scores_df <- scores_df[scores_df$rand==rand,]
 
@@ -158,29 +158,13 @@ for (sample_id in SAMPLES_DF$sample_id) {
           T <- T_df$cutoff
 
           these_scores_df <-  scores_df[scores_df$scr_method == m,]
-	  print(these_scores_df)
+	  #print(these_scores_df)
           scores <- these_scores_df$scr
 
-          # These scores sorted
-          tss <- these_scores_df[order(-scores),]
-
-          # # We will do our own threshold selection?
-          # negative <- tss[grep("_RAND[0-9]", tss$seqid), ]
-          # positive <- tss[setdiff(rownames(tss), rownames(negative)), ]
-          # print(min(positive$scr))
-          # print(max(negative$scr))
-          # T <- (min(positive$scr) + max(negative$scr)) / 2
-
-
-          #print(positive)
-          #print(negative)
-          #cat("\n\n")
-
-
-
           ## For debugging
+          tss <- these_scores_df[order(-scores),] # These scores sorted
           #print(tail(tss[tss$scr >= T,], 2))
-          print(T)
+          #print(T)
           #print(head(tss[tss$scr <= T,], 2))
           #cat("-------------------------------------------------\n")
           ###q()

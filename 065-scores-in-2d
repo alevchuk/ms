@@ -96,16 +96,28 @@ reshape_data <- function(scores_df, rand) {
     scores_df[locations_of_negatives, "Actual"] <- "Negative"
   }
 
+  # TODO: Relocate the follwoing line to collect-scores
+  scores_df[,"seqid"] <- gsub("[|]", "__", scores_df[,"seqid"]) # as for Blast
+
   scores_df
 }
 
 
 
-# Plotter
+
 library(ggplot2)
+
+##############
+# Plotter
+##############
 plot_scores_in_2d <- function(scores_df, info) {
 
-  binwidth <- 0.01
+  
+  colnames(scores_df)[colnames(scores_df) == info$column_of_data_for_x] <- 'x'
+  colnames(scores_df)[colnames(scores_df) == info$column_of_data_for_y] <- 'y'
+  info$label_x
+  info$label_y
+
 
   g_opts <-
     opts(
@@ -114,9 +126,8 @@ plot_scores_in_2d <- function(scores_df, info) {
        axis.text.x = theme_text(size=16),
        axis.text.y = theme_text(size=16),
 
-
        title = paste(sprintf("%.2f", info$injection_type),
-                     info$method_x, info$method_y)
+                     "unrelated sequences injected")
      )   
 
 
@@ -126,24 +137,27 @@ plot_scores_in_2d <- function(scores_df, info) {
   png(paste(
     OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
     "-rand", sprintf("%.2f", info$injection_type),
-    "-", info$method_x, "-", info$method_y,
-    "-scores-in-2d.png", sep=""),
+    "-", info$label_x, "-", info$label_y,
+    ".png", sep=""),
     width=800, heigh=800, type="cairo")
 
-   g_color <- ggplot(scores_df, aes(x=gscore, y=nscore)) +
+   g_color <- ggplot(scores_df, aes(x=x, y=y)) +
      geom_point(aes(shape=Actual, colour=Actual), size=5, alpha=0.2) +
      g_opts +
-     scale_y_continuous(limits=info$ylim)
+     scale_y_continuous(limits=info$ylim) +
+     xlab(info$label_x) +
+     ylab(info$label_y)
 
-  if (any(grep("_scaled", info$method_x)) ||
-      any(grep("_balance", info$method_x))) {
+  if (any(grep(ignore.case=T, "scaled", info$label_x)) ||
+      any(grep(ignore.case=T, "balance", info$label_x))) {
     g_color <- g_color + 
-      geom_line(data=data.frame(x=c(0,1), y=c(1,0)), aes(x=x, y=y))
+      geom_line(data=data.frame(x=c(0,1), y=c(1,0)), aes(x=x, y=y)) +
+      geom_line(data=data.frame(x=c(.5,.5), y=c(0,1)), aes(x=x, y=y)) +
+      geom_line(data=data.frame(x=c(0,1), y=c(.5,.5)), aes(x=x, y=y))
   }
 
   print(g_color)
   dev.off() 
-
 
   ##################
   # Black and White
@@ -151,24 +165,29 @@ plot_scores_in_2d <- function(scores_df, info) {
   png(paste(
     OUT_DIR, "/bw/sample-size", SAMPLE_SIZE, "-id", info$sample_id,
     "-rand", sprintf("%.2f", info$injection_type),
-    "-", info$method_x, "-", info$method_y,
-    "-scores-in-2d.png", sep=""),
+    "-", info$label_x, "-", info$label_y,
+    ".png", sep=""),
     width=800, heigh=800, type="cairo")
 
-  # Revers order of colors and shapes
-  scores_df$Actual <-
-    factor(scores_df$Actual, levels = rev(levels(scores_df$Actual)))
+  ## Revers order of colors and shapes
+  #scores_df$Actual <-
+  #  factor(scores_df$Actual, levels = rev(levels(scores_df$Actual)))
 
-  g_bw <- ggplot(scores_df, aes(x=gscore, y=nscore)) +
+  g_bw <- ggplot(scores_df, aes(x=x, y=y)) +
      geom_point(aes(shape=Actual, colour=Actual), size=5, alpha=0.7) +
      theme_bw() +
      scale_colour_grey() +
-     g_opts
+     g_opts +
+     scale_y_continuous(limits=info$ylim) +
+     xlab(info$label_x) +
+     ylab(info$label_y)
 
-  if (any(grep("_scaled", info$method_x)) ||
-      any(grep("_balance", info$method_x))) {
+  if (any(grep(ignore.case=T, "scaled", info$label_x)) ||
+      any(grep(ignore.case=T, "balance", info$label_x))) {
     g_bw <- g_bw + 
-      geom_line(data=data.frame(x=c(0,1), y=c(1,0)), aes(x=x, y=y))
+      geom_line(data=data.frame(x=c(0,1), y=c(1,0)), aes(x=x, y=y)) +
+      geom_line(data=data.frame(x=c(.5,.5), y=c(0,1)), aes(x=x, y=y)) +
+      geom_line(data=data.frame(x=c(0,1), y=c(.5,.5)), aes(x=x, y=y))
   }
 
   print(g_bw)
@@ -211,6 +230,9 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
   balanced_scores_df[balanced_scores_df$method ==
     "normd_dx_mod_seq_scr", "method"] <- "normd_balanced"
 
+  balanced_scores_df[balanced_scores_df$method ==
+    "blast", "method"] <- "blast_balanced"
+
 
   scaled_scores_df <- read.table(scaled_sample_file)
   colnames(scaled_scores_df) <-
@@ -242,13 +264,58 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
 
       scores_df <- reshape_data(scores_df, injection_type)
 
+      gscores_df <- subset(scores_df, method == "guidance_seq_scr")
+      nscores_df <- subset(scores_df, method == "normd_dx_mod_seq_scr")
+      gscores_s_df <- subset(scores_df, method == "guidance_scaled")
+      nscores_s_df <- subset(scores_df, method == "normd_scaled")
+      gscores_b_df <- subset(scores_df, method == "guidance_balanced")
+      nscores_b_df <- subset(scores_df, method == "normd_balanced")
+      blast_df <- subset(scores_df, method == "blast_balanced")
+
+
+      ##############################################
+      # Balanced scores:  GUIDANCE + NorMD vs Blast
+      ##############################################
+      plot_scores_df <- merge(gscores_b_df, nscores_b_df,
+        by=c("rand", "unused", "msa", "seqid", "Actual"))
+      colnames(plot_scores_df) <-  c("rand", "unused", "msa",
+            "seqid", "Actual", "gscore", "method_x", "nscore", "method_y")
+      plot_scores_df <- cbind(plot_scores_df,
+        list(coscore=(plot_scores_df$gscore + plot_scores_df$nscore)))
+      options(width=1000)
+      #print(blast_df)
+      #print(plot_scores_df)
+      #q()
+      plot_scores_df <-
+        merge(plot_scores_df[,c("rand", "msa", "seqid", "Actual", "coscore")],
+            blast_df[,c("rand", "msa", "seqid", "Actual", "scr")],
+            by=c("rand", "msa", "seqid", "Actual")
+            )
+      colnames(plot_scores_df) <- c("rand", "msa", "seqid", "Actual",
+                                    "coscore", "bscore")
+
+      plot_scores_df[,"coscore"] <- plot_scores_df[,"coscore"] / 2
+      #print(plot_scores_df)
+      #q()
+
+      plot_scores_in_2d(plot_scores_df, 
+        info=list(sample_id=sample_id,
+                  injection_type=injection_type,
+
+                  label_x="Prefectly_Balanced_BLAST_score",
+                  label_y="Prefectly_Balanced_G_N_coscore",
+                  column_of_data_for_x="bscore",
+                  column_of_data_for_y="coscore" 
+         )
+      )
+      #q()
+      # method_x=plot_scores_df[1, "method_x"],
+      # method_y=plot_scores_df[1, "method_y"])
+
 
       ##################
       # Raw scores
       ##################
-      gscores_df <- subset(scores_df, method == "guidance_seq_scr")
-      nscores_df <- subset(scores_df, method == "normd_dx_mod_seq_scr")
-
       plot_scores_df <- merge(gscores_df, nscores_df,
         by=c("rand", "unused", "msa", "seqid", "Actual"))
       colnames(plot_scores_df) <- c("rand", "unused", "msa",
@@ -256,21 +323,21 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
 
       plot_scores_in_2d(plot_scores_df, 
         info=list(sample_id=sample_id,
-                  method_x=plot_scores_df[1, "method_x"],
-                  method_y=plot_scores_df[1, "method_y"],
                   ylim=c(-0.1, 0.01), # This will cause some warnings
+
+                  label_x="GUIDANCE",
+                  label_y="NorMD",
+                  column_of_data_for_x="gscore",
+                  column_of_data_for_y="nscore",
 
                   injection_type=injection_type
              )
       )
-      #q()
 
-      ##################
-      # Balanced scores
-      ##################
-      gscores_df <- subset(scores_df, method == "guidance_balanced")
-      nscores_df <- subset(scores_df, method == "normd_balanced")
-      plot_scores_df <- merge(gscores_df, nscores_df,
+      #####################################
+      # Balanced scores: GUIDANCE vs NorMD
+      #####################################
+      plot_scores_df <- merge(gscores_b_df, nscores_b_df,
         by=c("rand", "unused", "msa", "seqid", "Actual"))
 
       colnames(plot_scores_df) <-  c("rand", "unused", "msa",
@@ -279,16 +346,20 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
       plot_scores_in_2d(plot_scores_df, 
         info=list(sample_id=sample_id,
                   injection_type=injection_type,
-                  method_x=plot_scores_df[1, "method_x"],
-                  method_y=plot_scores_df[1, "method_y"]))
+                  label_x="GUIDANCE_Prefectly_Balanced",
+                  label_y="NorMD_Prefectly_Balanced",
+                  column_of_data_for_x="gscore",
+                  column_of_data_for_y="nscore",
+
+                  injection_type=injection_type
+                 )
+        )
 
 
       ##################
       # Scaled scores
       ##################
-      gscores_df <- subset(scores_df, method == "guidance_scaled")
-      nscores_df <- subset(scores_df, method == "normd_scaled")
-      plot_scores_df <- merge(gscores_df, nscores_df,
+      plot_scores_df <- merge(gscores_s_df, nscores_s_df,
         by=c("rand", "unused", "msa", "seqid", "Actual"))
       colnames(plot_scores_df) <- c("rand", "unused", "msa",
             "seqid", "Actual", "gscore", "method_x", "nscore", "method_y")
@@ -296,9 +367,14 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
       #print(plot_scores_df)
       plot_scores_in_2d(plot_scores_df, 
         info=list(sample_id=sample_id,
-                  injection_type=injection_type,
-                  method_x=plot_scores_df[1, "method_x"],
-                  method_y=plot_scores_df[1, "method_y"]))
+                  label_x="GUIDANCE_Scaled",
+                  label_y="NorMD_Scaled",
+                  column_of_data_for_x="gscore",
+                  column_of_data_for_y="nscore",
+
+                  injection_type=injection_type
+                  )
+      )
     })
   }
 }
