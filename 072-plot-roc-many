@@ -27,7 +27,7 @@ script_name <- script_path_list[[length(script_path_list)]]
 # Primary locations
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 UPSTREAM_DIR <-
-  paste(EXPERIMENT_NAME, "070-build-roc-classifer-data-out", sep="/")
+  paste(EXPERIMENT_NAME, "070-build-roc-classifier-data-out", sep="/")
 OUT_DIR <- paste(EXPERIMENT_NAME, script_name, sep="/")
 
 # Directory where this script is located
