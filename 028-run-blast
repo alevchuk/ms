@@ -70,18 +70,7 @@ while read f; do
   formatdb -i $fasta -p T -o
   $BLASTALL -p blastp -i  $fasta -d $fasta -m 8 -e 0.1 > $fasta-m8
 
-
-
-  #$DATA_OUT/$SAMPLE_AND_MSA_NAME-m8
-
-  #out_sh="$DATA_IN/$SAMPLE_AND_MSA_NAME.sh"
-  #cat $NORMD_RUN_TEMPLATE |
-  #  sed "s|%%DATA_OUT%%|$DATA_OUT/$SAMPLE_AND_MSA_NAME|g" |
-  #  sed "s|%%WD%%|`pwd`|g" |
-  #  sed "s|%%MSA_TAB%%|$msa_tab|g" |
-  #  sed "s|%%SAMPLE_AND_MSA_NAME%%|$SAMPLE_AND_MSA_NAME|g" |
-  #  sed "s|%%RAM_DIR%%|$RAM_DIR/$SAMPLE_AND_MSA_NAME|g" |
-  #    cat > $out_sh
-  #  chmod +x $out_sh
-
 done
+
+./$0-scripts/get-per-seq-blast-scores.R ./$EXPERIMENT_NAME/$0-data-in/
+mv ./$EXPERIMENT_NAME/$0-data-in/*-m8-scores ./$EXPERIMENT_NAME/$0-data-out/

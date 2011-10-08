@@ -31,19 +31,17 @@ script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 # Arguments
 script_args <- commandArgs(trailingOnly=T)
 
-if(length(script_args) != 2) {
+if(length(script_args) != 1) {
        cat(paste(
-         paste("Usage:", script_name, "<sample-size> <blast-results-dir>\n"),
+         paste("Usage:", script_name, "<blast-results-dir>\n"),
          "Required Options",
-         "  <sample-size>        Size of the disired sample",
          "  <blast-results-dir>  Directory with the Blast m8 files",
          "",
          sep="\n"))
        quit()
 }
 
-SAMPLE_SIZE <- script_args[[1]]
-UPSTREAM_DIR <- script_args[[2]]
+UPSTREAM_DIR <- script_args[[1]]
 
 
 # Get all blast m8 files
