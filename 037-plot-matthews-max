@@ -130,18 +130,30 @@ plot_matthews_max <- function(scores_df, injection_types,
 
           scores_df <- scores_df[scores_df[,'method'] == scoring_method,]
 
-
           # Sort by score (lowest scores on the bottom)
           scores_df <- scores_df[order(-scores_df[,"scr"]),]
+
+
 
           # Frequently used subset (after sorting!)
           all_scores <- scores_df[,"scr"] 
 
           ## Choose cutoffs
-          cutoffs <- sapply(1:(nrow(scores_df) - 1), function(i) {
-            scores_df[i,'scr']/2 + scores_df[i+1,'scr']/2
+          u_scores <- unique(scores_df$scr)
+          cutoffs <- sapply(1:(length(u_scores) - 1), function(i) {
+            u_scores[i] / 2 + u_scores[i + 1] / 2
           })
-          cutoffs <- unique(cutoffs)
+
+          # Historic 2011-10-07 bug: Cutoffs made unique but scores were not.
+          #                          This introduced cuts "in between"
+          #                          duplicate scores.
+          #cutoffs <- unique(cutoffs)
+
+
+          # Good to see during development
+	  print(scores_df)
+          print(cutoffs)
+
 
           # Running into one of these extreams should become
           # obvious, but we have them here to capture all possible cutoffs
@@ -186,16 +198,8 @@ plot_matthews_max <- function(scores_df, injection_types,
             length(which(scores_df[predicted_negative, "Known"] != "Negative"))
           })
 
-          #print(all_scores[(length(all_scores) - 500):length(all_scores)])
-          #print(fn[(length(fn) - 500):length(fn)])
 
-          ## To avoid dividing by 0 in Matthews equation
-          #tp[tp == 0] <- 1
-          #tn[tn == 0] <- 1
-          #fp[fp == 0] <- 1
-          #fn[fn == 0] <- 1
-
-          # Historic 2011-09-19 used to be sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
+          # Historic 2011-09-19 bug: be sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
           m <-
             ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
           #matthews[is.na(matthews) | matthews == Inf | matthews == -Inf] <- 0
@@ -213,31 +217,39 @@ plot_matthews_max <- function(scores_df, injection_types,
           m_pos <- which(matthews == mmax)
           m_cutoff <- cutoffs[m_pos]
 
-          ### print(c(
-          ###  #"cutoffs",
-          ###  "matthews","mmax","m_pos", "m_cutoff"))
-          ### #print(cutoffs)
-          ### print(matthews)
-          ### print(mmax)
-          ### print(m_pos)
-          ### print(m_cutoff)
+          print(c(
+           #"cutoffs",
+           "matthews","mmax","m_pos", "m_cutoff"))
+          #print(cutoffs)
+          print(matthews)
+          print(mmax)
+          print(m_pos)
+          print(m_cutoff)
 
           mini_df <<-
             rbind(mini_df, 
               data.frame(
                 Injection_Type=signif(injection_type, 2),
                 Max_Matt_Cutoff=m_cutoff[[1]],
-                Scoring_Method=factor(scoring_method, levels=scoring_methods),
+                Scoring_Method=factor(scoring_method,
+                levels=scoring_methods),
                 Ground_Truth="Known"
               )
             )
 
         })
       } # Scoring  method
+      #q()
 
+
+
+      # above this line - known
 
 
       # ------------------------------------------------------------
+
+
+      # bellow this line - predicted
 
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
       # Lets take NorMD the base truth
@@ -253,14 +265,6 @@ plot_matthews_max <- function(scores_df, injection_types,
       subject_scoring_method <- "guidance_seq_scr"
       subject_scr <- "g_scr"
       subject_cutoffs <- g_cutoffs
-
-      #base_truth_scoring_method <- "guidance_seq_scr"
-      #base_truth_scr <- "g_scr"
-      #base_truth_cutoffs <- g_cutoffs
-
-      #subject_scoring_method <- "normd_dx_mod_seq_scr"
-      #subject_scr <- "n_scr"
-      #subject_cutoffs <- n_cutoffs
 
       # NOTE: The worst Matthews correlation coefficient is -1 by definition
       # NOTE: matt_max may have multiple rows due to co-optimal solutions
@@ -290,13 +294,13 @@ plot_matthews_max <- function(scores_df, injection_types,
           # "False" negatives
           fn <- length(which(predicted_negative[,base_truth_scr] > bt_cutoff))
 
-          # Historic 2011-09-19 used to be sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
+          # Historic 2011-09-19 bug: sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn*fn))
           m <- ((tp * tn) - (fp * fn)) / sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
 
           # Order of these two matters
           m[fp == 0 & fn == 0] <- 2  # 2x best
           m[tp == 0 | tn == 0] <- -1 # worst
-          m[-Inf] <- -1 # worst if fp*fn is greater than tp*tn
+          m[-Inf] <- -1 # fp*fn is greater than tp*tn
 
           #if (tp == 0 || tn == 0) m <- -1 # worst
           #if (fp == 0 && fn == 0) m <- 2  # 2x best
@@ -417,6 +421,9 @@ plot_matthews_max <- function(scores_df, injection_types,
         }
 
         max_matt_df <- max_matt_df[bt_winner_loc,]
+
+        print("Co-optimal solution winnner:")
+        print(max_matt_df)
       }
 
 
@@ -523,6 +530,7 @@ for(sample_file in SAMPLE_FILES) {
   #for(msa in c("COG2009")) {
   #for(msa in c("COG0555")) {
   #for(msa in c("PRK04885")) {
+  #for(msa in c("PRK11574")) {
   for(msa in msa_list) {
     local({
       scores_df <- scores_df[scores_df[,'msa'] == msa,]
@@ -559,13 +567,13 @@ for(sample_file in SAMPLE_FILES) {
 
         scores_df <- add_known_column(scores_df)
 
-
         plot_matthews_max(scores_df,
           injection_types = injection_types,
           scoring_methods = scoring_methods,
           info = list(sample_id=sample_id, sample_dir=sample_dir, msa=msa),
           cutoffs_outfile = cutoffs_outfile)
       }
+      #cat("\n\n\n\n\n")
 
     })
   }
