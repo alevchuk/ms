@@ -21,7 +21,8 @@
 SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
 # Name of this script
-script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path <-
+  sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
 script_path_list <- strsplit(script_path, '/')[[1]]
 script_name <- script_path_list[[length(script_path_list)]]
 
@@ -36,7 +37,8 @@ UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
 
 # How to use this script
 usage_and_quit <- function() {
-  cat(paste(script_name, " plots max Matthews correlation coefficient", "\n\n"))
+  cat(paste(script_name, " plots max Matthews correlation coefficient",
+    "\n\n"))
   cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
   cat(paste(
     "Required Arguments",
@@ -93,9 +95,10 @@ dir.create(OUT_DIR, showWarnings=FALSE)
 
 plot_matthews_max <- function(scores_df, injection_types,
                               scoring_methods, info, cutoffs_outfile) {
+  print(scoring_methods)
 
-  if (length(scoring_methods) != 2) {
-    write("ERROR: I only know how to handle 2 scoring methods\n")
+  if (length(scoring_methods) != 3) {
+    cat("ERROR: I only know how to handle 2 scoring methods\n")
     quit()
   }
 
@@ -121,6 +124,7 @@ plot_matthews_max <- function(scores_df, injection_types,
       n_cutoffs <- c()
 
       for(scoring_method in scoring_methods) {
+      #for(scoring_method in 'blast') {
         local({
 
           #print(c("scores_df", "scoring_method"))
@@ -354,8 +358,8 @@ plot_matthews_max <- function(scores_df, injection_types,
         ## ++++++++++ bug search / check +++++++++++++
         ### print(both)
         ### cat("Base truth (", base_truth_scr, ") cutoff: ", bt_cutoff, "\n")
-	### print(as.numeric(m_df$matthews))
-	### print(as.character(m_df$counts))
+        ### print(as.numeric(m_df$matthews))
+        ### print(as.character(m_df$counts))
 
         ### cat("Base truth (", base_truth_scr, ") max matt cutoff: ",
         ###   max_matt_df$bt_cutoff, "\n")
@@ -380,7 +384,7 @@ plot_matthews_max <- function(scores_df, injection_types,
         print(max_matt_df)
 
         # Get nearest score
-	subject_closest_score <-
+        subject_closest_score <-
           sapply(max_matt_df$subject_cutoff, function(i){
             # first cutoff that's less
             both[,subject_scr][both[,subject_scr] < i][[1]]
@@ -490,6 +494,7 @@ plot_matthews_max <- function(scores_df, injection_types,
 
 }
 
+
 # Reshaper
 add_known_column <- function(scores_df) {
   # Mark +/- based on the sequence name
@@ -507,9 +512,13 @@ add_known_column <- function(scores_df) {
 for(sample_file in SAMPLE_FILES) {
 
   scores_df <- read.table(sample_file)
-  colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+  colnames(scores_df) <-
+    c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
 
-  injection_types <- as.numeric(sort(unique(as.character(scores_df[,'rand']))))
+  injection_types <- 
+    as.numeric(sort(unique(as.character(scores_df[,'rand']))))
+
+  #scoring_methods <- 'blast'
   scoring_methods <- sort(as.character(unique(scores_df[,'method'])))
 
   sample_id <- SH(sprintf(
@@ -548,7 +557,10 @@ for(sample_file in SAMPLE_FILES) {
       #
       # Check that all scoring methods exists
       #
-      scoring_methods_here <- sort(as.character(unique(scores_df[,'method'])))
+      scoring_methods_here <-
+        sort(as.character(unique(scores_df[,'method'])))
+      #scoring_methods_here <- 'blast'
+
       non_existing_scoring_methods <-
         setdiff(scoring_methods_here,scoring_methods)
 
@@ -559,7 +571,7 @@ for(sample_file in SAMPLE_FILES) {
           stderr())
 
       } else if (length(non_existing_scoring_methods) > 0) {
-         write(paste("WARNING: Rand", non_existing_scoring_methods,
+         write(paste("WARNING: ", non_existing_scoring_methods,
            " does not exist for MSA ", msa, " in ", sample_dir, sep=""),
            stderr())
 
