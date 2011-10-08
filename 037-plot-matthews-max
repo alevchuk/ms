@@ -154,10 +154,6 @@ plot_matthews_max <- function(scores_df, injection_types,
           #cutoffs <- unique(cutoffs)
 
 
-          # Good to see during development
-	  print(scores_df)
-          print(cutoffs)
-
 
           # Running into one of these extreams should become
           # obvious, but we have them here to capture all possible cutoffs
@@ -212,7 +208,7 @@ plot_matthews_max <- function(scores_df, injection_types,
           m[fp == 0 & fn == 0] <- 2  # 2x best
           m[tp == 0 | tn == 0] <- -1 # worst
 
-          m[-Inf] <- -1 # worst if fp*fn is greater than tp*tn
+          m[m == -Inf] <- -1 # worst if fp*fn is positive and (tp==0 or tn==0)
           # TODO: In extreams allow tn=0 xor tp=0
           #   but there cut gaps may be a problem
 
@@ -221,14 +217,20 @@ plot_matthews_max <- function(scores_df, injection_types,
           m_pos <- which(matthews == mmax)
           m_cutoff <- cutoffs[m_pos]
 
-          print(c(
-           #"cutoffs",
-           "matthews","mmax","m_pos", "m_cutoff"))
-          #print(cutoffs)
-          print(matthews)
-          print(mmax)
-          print(m_pos)
-          print(m_cutoff)
+          #options(width=10000)
+          #print(c("scores_df"))
+          #print(scores_df)
+          #cat("\n")
+          #print(c(
+          # #"cutoffs",
+          # "matthews","mmax","m_pos", "m_cutoff"))
+          ##print(cutoffs)
+          #print(matthews)
+          #print(mmax)
+          #print(m_pos)
+          #print(m_cutoff)
+          #cat("--------------------------------------------------\n")
+          #cat("\n")
 
           mini_df <<-
             rbind(mini_df, 
@@ -243,8 +245,7 @@ plot_matthews_max <- function(scores_df, injection_types,
 
         })
       } # Scoring  method
-      #q()
-
+      # q()
 
 
       # above this line - known
@@ -536,10 +537,11 @@ for(sample_file in SAMPLE_FILES) {
   # All alignent in the sample
   msa_list <- sort(as.character(unique(scores_df[,'msa'])))
 
-  #for(msa in c("COG2009")) {
-  #for(msa in c("COG0555")) {
-  #for(msa in c("PRK04885")) {
-  #for(msa in c("PRK11574")) {
+  #for(msa in "COG2009") {
+  #for(msa in "COG0555") {
+  #for(msa in "PRK04885") {
+  #for(msa in "PRK11574") {
+  #for(msa in "smart00456") {
   for(msa in msa_list) {
     local({
       scores_df <- scores_df[scores_df[,'msa'] == msa,]

@@ -33,7 +33,8 @@ script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
-UPSTREAM2 <- paste(EXPERIMENT_NAME, "/060-balance-scores-data-out", sep="")
+UPSTREAM2 <- paste(EXPERIMENT_NAME,
+                       "/062-balance-scores-perfectly-data-out", sep="")
 UPSTREAM3 <- paste(EXPERIMENT_NAME, "/061-scale-scores-data-out", sep="")
 
 
@@ -112,9 +113,11 @@ plot_scores_in_2d <- function(scores_df, info) {
        axis.title.x = theme_text(size=16, vjust=0.03),
        axis.text.x = theme_text(size=16),
        axis.text.y = theme_text(size=16),
+
+
        title = paste(sprintf("%.2f", info$injection_type),
                      info$method_x, info$method_y)
-     ) 
+     )   
 
 
   ##################
@@ -129,7 +132,8 @@ plot_scores_in_2d <- function(scores_df, info) {
 
    g_color <- ggplot(scores_df, aes(x=gscore, y=nscore)) +
      geom_point(aes(shape=Actual, colour=Actual), size=5, alpha=0.2) +
-     g_opts
+     g_opts +
+     scale_y_continuous(limits=info$ylim)
 
   if (any(grep("_scaled", info$method_x)) ||
       any(grep("_balance", info$method_x))) {
@@ -179,17 +183,20 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
   #sample_file in SAMPLE_FILES) {
 
   sample_file <- as.character(ALL_SCORES[sample_i,]$scores)
-  balanced_sample_file <- as.character(ALL_SCORES[sample_i,]$balanced_scores)
-  scaled_sample_file <- as.character(ALL_SCORES[sample_i,]$scaled_scores)
+  balanced_sample_file <-
+    as.character(ALL_SCORES[sample_i,]$balanced_scores)
+  scaled_sample_file <-
+    as.character(ALL_SCORES[sample_i,]$scaled_scores)
 
 
   print(sample_file)
   print(balanced_sample_file)
 
   scores_df <- read.table(sample_file)
-  colnames(scores_df) <- c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
-  #injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
-  injection_types <- sort(unique(scores_df[,'rand']))
+  colnames(scores_df) <-
+    c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+  injection_types <- setdiff(sort(unique(scores_df[,'rand'])), 0.00)
+  #injection_types <- sort(unique(scores_df[,'rand']))
 
 
 
@@ -244,14 +251,19 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
 
       plot_scores_df <- merge(gscores_df, nscores_df,
         by=c("rand", "unused", "msa", "seqid", "Actual"))
-      colnames(plot_scores_df) <- c("rand", "unused", "msa", "seqid", "Actual", 
-                      "gscore", "method_x", "nscore", "method_y")
+      colnames(plot_scores_df) <- c("rand", "unused", "msa",
+           "seqid", "Actual", "gscore", "method_x", "nscore", "method_y")
 
       plot_scores_in_2d(plot_scores_df, 
         info=list(sample_id=sample_id,
-                  injection_type=injection_type,
                   method_x=plot_scores_df[1, "method_x"],
-                  method_y=plot_scores_df[1, "method_y"]))
+                  method_y=plot_scores_df[1, "method_y"],
+                  ylim=c(-0.1, 0.01), # This will cause some warnings
+
+                  injection_type=injection_type
+             )
+      )
+      #q()
 
       ##################
       # Balanced scores
@@ -260,8 +272,9 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
       nscores_df <- subset(scores_df, method == "normd_balanced")
       plot_scores_df <- merge(gscores_df, nscores_df,
         by=c("rand", "unused", "msa", "seqid", "Actual"))
-      colnames(plot_scores_df) <- c("rand", "unused", "msa", "seqid", "Actual", 
-                      "gscore", "method_x", "nscore", "method_y")
+
+      colnames(plot_scores_df) <-  c("rand", "unused", "msa",
+            "seqid", "Actual", "gscore", "method_x", "nscore", "method_y")
 
       plot_scores_in_2d(plot_scores_df, 
         info=list(sample_id=sample_id,
@@ -277,9 +290,10 @@ for(sample_i in 1:nrow(ALL_SCORES)) {
       nscores_df <- subset(scores_df, method == "normd_scaled")
       plot_scores_df <- merge(gscores_df, nscores_df,
         by=c("rand", "unused", "msa", "seqid", "Actual"))
-      colnames(plot_scores_df) <- c("rand", "unused", "msa", "seqid", "Actual", 
-                      "gscore", "method_x", "nscore", "method_y")
+      colnames(plot_scores_df) <- c("rand", "unused", "msa",
+            "seqid", "Actual", "gscore", "method_x", "nscore", "method_y")
 
+      #print(plot_scores_df)
       plot_scores_in_2d(plot_scores_df, 
         info=list(sample_id=sample_id,
                   injection_type=injection_type,
