@@ -152,7 +152,10 @@ experiments <- list(
   
   'bp_guidance',
   'bp_normd',
-  'bp_blast'
+  'bp_blast',
+
+  # s_guidance + s_normd
+  "sg_plus_sn"
 )
 
 c(
@@ -257,11 +260,13 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
     }
   }
 
-
-
   #print(merged_df)
   #q()
 
+
+  # Combined calssification
+  merged_df[,"sg_plus_sn"] <- 
+    merged_df[,"s_guidance"] + merged_df[,"s_normd"]
 
 
   #for (method in c("r_guidance", "r_normd", "r_blast")) {
