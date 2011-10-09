@@ -1,0 +1,350 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+options(width=10000, max.print=100000000) # use less -S
+
+SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Primary locations
+EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
+UPSTREAM_FILES <- c(
+  paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/"),
+  paste(EXPERIMENT_NAME, "/062-balance-scores-perfectly-data-out", sep=""),
+  paste(EXPERIMENT_NAME, "/061-scale-scores-data-out", sep=""),
+  paste(EXPERIMENT_NAME, "/060-balance-scores-data-out", sep="")
+)
+
+# Raw, Balanced Perfectly, Sacled, Balanced Ab Initio
+names(UPSTREAM_FILES) <- c("r", "bp", "s", "ba")
+
+
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+dir.create(OUT_DIR, showWarnings=FALSE)
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+# How to use this script
+usage_and_quit <- function() {
+  cat(paste(script_name, " ", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
+
+
+
+
+U1_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM_FILES[1], "/sample-size", SAMPLE_SIZE, "*-seq-scores",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    })
+U1_FILES <-
+  data.frame(r=U1_FILES[1,],
+  sample_id=U1_FILES[2,], stringsAsFactors=F)
+rownames(U1_FILES) <- c()
+
+
+
+U2_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM_FILES[2], "/sample-size", SAMPLE_SIZE, "*-tab",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    })
+U2_FILES <-
+  data.frame(bp=U2_FILES[1,],
+  sample_id=U2_FILES[2,], stringsAsFactors=F)
+rownames(U2_FILES) <- c()
+
+
+
+U3_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM_FILES[3], "/sample-size", SAMPLE_SIZE, "*-tab",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    })
+U3_FILES <-
+  data.frame(s=U3_FILES[1,],
+  sample_id=U3_FILES[2,], stringsAsFactors=F)
+rownames(U3_FILES) <- c()
+
+
+
+U4_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM_FILES[4], "/sample-size", SAMPLE_SIZE, "*-tab",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+  sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    })
+U4_FILES <-
+  data.frame(ba=U4_FILES[1,],
+  sample_id=U4_FILES[2,], stringsAsFactors=F)
+rownames(U4_FILES) <- c()
+
+
+
+
+# Merge
+ALL_FILES_DF <- merge(U1_FILES, U2_FILES, by="sample_id")
+ALL_FILES_DF <- merge(ALL_FILES_DF, U3_FILES, by="sample_id")
+ALL_FILES_DF <- merge(ALL_FILES_DF, U4_FILES, by="sample_id")
+
+
+# No ID50s
+ALL_FILES_DF <- ALL_FILES_DF[-grep("id5[0-9]{2}", ALL_FILES_DF$sample_id),]
+
+
+
+#print(ALL_FILES_DF)
+#q()
+
+experiments <- list(
+  'r_guidance',
+  'r_normd',
+  'r_blast',
+  
+  's_guidance',
+  's_normd',
+  # 's_blast',
+  
+  'bp_guidance',
+  'bp_normd',
+  'bp_blast'
+)
+
+c(
+'rG',
+'rN',
+'rG+rN',
+'rB',
+
+'sG',
+'sN',
+'sG+sN',
+
+'bpG',
+'bpN',
+'bpG+bpN',
+
+'bGN-G',
+'bGN-N',
+'bGB-G',
+'bGB-B',
+'bNB-N',
+'bNB-B'
+)
+
+
+library(ROCR)
+PLOT_DF <- data.frame()
+
+for(sample_id in ALL_FILES_DF$sample_id) { local({
+
+  print(sample_id)
+  ALL_FILES_DF <- ALL_FILES_DF[ALL_FILES_DF$sample_id == sample_id,]
+  
+  merged_df <- data.frame()
+
+
+  for (up in names(UPSTREAM_FILES)) {
+
+
+    if(up == "ba") next
+
+    scdf_file <- ALL_FILES_DF[,up]
+    print(up)
+    #print(scdf_file)
+    #q()
+    
+    tmp_df <- read.table(scdf_file,
+      col.names=c("score", "rand", "unused_column", "msa", "method", "seq"))
+    tmp_df[,"unused_column"] <- NULL
+
+    # Only 1 injection type for now
+    
+
+    # TODO: Relocate the follwoing line to collect-scores
+    tmp_df[,"seq"] <- gsub("[|]", "__", tmp_df[,"seq"]) # as for Blast
+
+
+    # Self merge
+    tmp_df_methods <- unique(tmp_df$method)
+    first_m <- tmp_df_methods[[1]]
+    self_merged <- subset(tmp_df, method == first_m)
+    names(self_merged)[names(self_merged) == "score"] <-
+      paste(up, first_m, sep="_")
+    self_merged[,"method"] <- NULL # Drop the method column
+
+    for(next_method in setdiff(unique(tmp_df$method), first_m)) {
+      tmp_df_sub <- subset(tmp_df, method == next_method)
+      tmp_df_sub[,"method"] <- NULL # Drop the method column
+      self_merged <- merge(self_merged, tmp_df_sub, by=c("rand", "msa", "seq"))
+      names(self_merged)[names(self_merged) == "score"] <-
+        paste(up, next_method, sep="_")
+    }
+
+    #print(self_merged)
+    #q()
+
+
+    # Append merge
+    if (nrow(merged_df) == 0) {
+      print("First...")
+      merged_df <- self_merged
+
+    } else {
+      print("Merging...")
+      merged_df <- 
+        merge(merged_df, self_merged, by=c("rand", "msa", "seq"))
+    }
+    #print(scdf_file)
+    #print(nrow(tmp_df))
+    #print(nrow(merged_df))
+    #print(merged_df[1:10,])
+
+    # I should have used simpler method names earlier
+    for(cn in colnames(merged_df)) {
+      if (any(grep("guidance_seq_scr", cn)))
+        colnames(merged_df)[colnames(merged_df) == cn] <- 
+          paste(up, "guidance", sep="_")
+
+      if (any(grep("normd_dx_mod_seq_scr", cn)))
+        colnames(merged_df)[colnames(merged_df) == cn] <- 
+          paste(up, "normd", sep="_")
+    }
+  }
+
+
+
+  #print(merged_df)
+  #q()
+
+
+
+  #for (method in c("r_guidance", "r_normd", "r_blast")) {
+  for (rand in setdiff(unique(tmp_df$rand), 0.0)) {local({
+    merged_df <- merged_df[merged_df$rand==rand, ]
+
+    observed <- rep(1, nrow(merged_df))
+    observed[grep("_RAND[0-9]", merged_df$seq)] <- 0
+    merged_df <- cbind(observed, merged_df)
+
+    for (ex in experiments) {
+      method <- ex[[1]]
+
+      print(length(observed))
+      print(nrow(merged_df))
+
+      pred <- prediction(merged_df[,method], observed)
+      auc <- performance(pred, "auc")@y.values[[1]][1]
+
+      PLOT_DF <<-
+        rbind(PLOT_DF,
+              list(sample_id=sample_id, method=method, auc=auc, rand=rand))
+
+      PLOT_DF[,"method"] <<- as.character(PLOT_DF[,"method"])
+      PLOT_DF[,"sample_id"] <<- as.character(PLOT_DF[,"sample_id"])
+    }
+
+  })}
+
+})}
+
+#print(PLOT_DF)
+#q()
+
+
+# Order by arerage AUC
+exps <- unique(PLOT_DF$method)
+means <- sapply(exps, function(x) {
+  mean(subset(PLOT_DF, method == x & rand == 0.15)$auc)
+})
+PLOT_DF$method <- factor(PLOT_DF$method, levels=exps[order(means)])
+#PLOT_DF$method <- factor(PLOT_DF$method, 
+#  levels=c(
+#    'r_normd',
+#    'r_guidance',
+#  
+#    's_normd',
+#    'bp_normd',
+#  
+#    'r_blast',
+#    'bp_blast',
+#    
+#    's_guidance',
+#    'bp_guidance'
+#  )
+#)
+
+
+# Plot rand 0.05 on the bottom
+PLOT_DF$rand <- factor(PLOT_DF$rand,
+  levels=sort(unique(PLOT_DF$rand), decreasing=T))
+
+library(ggplot2)
+
+
+png(paste(OUT_DIR, "/auc-lineplots.png", sep=""),
+  width=600, height=1000,
+  type="cairo")
+
+g <- ggplot(PLOT_DF, aes(y=auc, x=method, group=sample_id)) +
+     geom_point(aes(colour=sample_id)) +
+     geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
+     facet_grid(rand ~ ., scales="free") +
+     opts(legend.position = "none")
+
+print(g)
+
+dev.off()
+
+#while (TRUE) {
+#  tryCatch(source("tmp-plot-code.R"), error = function(e) {
+#    print(e) 
+#  })
+#  
+#  Sys.sleep(1)
+#}
