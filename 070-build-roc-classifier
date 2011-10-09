@@ -27,6 +27,14 @@ script_name <- script_path_list[[length(script_path_list)]]
 EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 
 UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
+UPSTREAM2 <- paste(EXPERIMENT_NAME,
+                   "/062-balance-scores-perfectly-data-out", sep="")
+UPSTREAM3 <- paste(EXPERIMENT_NAME,
+                   "/061-scale-scores-data-out", sep="")
+UPSTREAM4 <- paste(EXPERIMENT_NAME,
+                   "/060-balance-scores--data-out", sep="")
+
+
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
 dir.create(OUT_DIR, showWarnings=FALSE)
 

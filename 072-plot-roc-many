@@ -123,16 +123,13 @@ ROC_DF <- subset(ROC_DF, random_ratio == inj)
     ylab = "True Positive Rate",
     axes = FALSE)
   scoring_methods <- as.character(unique(ROC_DF$scoring_method))
-  for (m in scoring_methods) {
+  for (m in 1:length(scoring_methods)) {
   local({
-  ROC_DF <- subset(ROC_DF, scoring_method == m)
+    ROC_DF <- subset(ROC_DF, scoring_method == scoring_methods[m])
     
     rocr <- ROCR_LIST[[ROC_DF$rocr_id]]
     p4plot <- performance(rocr, "tpr", "fpr")
-    plot(p4plot, col=c_1, lwd=w_1, add=T)
-    ### , axes = FALSE) # the axes option has no effect
-  
-    #plot(performance(p_3,"tpr","fpr"), col=c_3, lwd=w_3, add=T)
+    plot(p4plot, col=m, lwd=m**2, add=T)
   })
   }
 
@@ -149,10 +146,14 @@ ROC_DF <- subset(ROC_DF, random_ratio == inj)
   abline(v=0:100/100, h=0:100/100, lty=3, col="gray") 
   
   
-  legend("bottomright", inset=0.037, as.character(ROC_DF$leg_label[[1]]),
+  legend("bottomright", inset=0.037,
+    paste(as.character(ROC_DF$leg_label, sep="\n")),
     title=paste("Injection Amount:", inj, "\n",
                 "auc = area under the curve"),
-    col = c(c_1), lwd = c(w_1), cex=1.5)
+    col = 1:length(ROC_DF$leg_label),#c(c_1),
+    lwd = (1:length(ROC_DF$leg_label))**2,#c(w_1),
+
+    cex=1.5)
   dev.off()
   
   

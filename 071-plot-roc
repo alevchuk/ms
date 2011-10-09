@@ -23,7 +23,7 @@ load(paste(UPSTREAM_DIR, "predictions-normd-mod.Rdata"   , sep="/"))
 load(paste(UPSTREAM_DIR, "predictions-normd-dx.Rdata"    , sep="/"))
 load(paste(UPSTREAM_DIR, "predictions-normd-simple.Rdata", sep="/"))
 load(paste(UPSTREAM_DIR, "predictions-normd-mod-dx.Rdata", sep="/"))
-load(paste(UPSTREAM_DIR, "sample-size100-id3-rand0.05-normd_dx_mod_seq_scr-roc.Rdata", sep="/"))
+#load(paste(UPSTREAM_DIR, "sample-size100-id3-rand0.05-normd_dx_mod_seq_scr-roc.Rdata", sep="/"))
 
 #print(p_new)
 
@@ -48,7 +48,7 @@ par(cex.lab=2, cex.axis=1.5, font.main=12)
 plot(performance(p_1,"tpr","fpr"), col=c_1, lwd=w_1)
 plot(performance(p_3,"tpr","fpr"), col=c_3, lwd=w_3, add=T)
 plot(performance(p_5,"tpr","fpr"), col=c_5, lwd=w_5, add=T)
-plot(performance(p_new,"tpr","fpr"), col=c_new, lwd=w_new, add=T)
+#plot(performance(p_new,"tpr","fpr"), col=c_new, lwd=w_new, add=T)
 axis(1, c())
 axis(2, c(0, 1:10/10))
 axis(3, c(0, 1:10/10))
@@ -63,12 +63,12 @@ leg.txt <- c(
   ,l_3
   #,l_4
   ,l_5
-  , "NorMD modified dx with re-alignment (0.918 auc)"
+  #, "NorMD modified dx with re-alignment (0.918 auc)"
 )
 
 legend("bottomright", inset=0.037, leg.txt, 
   title="auc = area under the curve",
-  col = c(c_1,c_3,c_5,c_new),
-  lwd = c(w_1,w_3,w_5,w_new), cex=1.5)
+  col = c(c_1,c_3,c_5),
+  lwd = c(w_1,w_3,w_5), cex=1.5)
 
 dev.off()
