@@ -155,7 +155,14 @@ experiments <- list(
   'bp_blast',
 
   # s_guidance + s_normd
-  "sg_plus_sn"
+  "rg+rn",
+  "sg+sn",
+  "sg+rn+rb",
+
+
+  "bpg+bpn",
+  "bpg+bpb",
+  "bpn+bpb"
 )
 
 c(
@@ -265,8 +272,19 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
 
 
   # Combined calssification
-  merged_df[,"sg_plus_sn"] <- 
+  merged_df[,"sg+sn"] <- 
     merged_df[,"s_guidance"] + merged_df[,"s_normd"]
+  merged_df[,"rg+rn"] <- 
+    merged_df[,"r_guidance"] + merged_df[,"r_normd"]
+  merged_df[,"sg+rn+rb"] <- 
+    merged_df[,"s_guidance"] + merged_df[,"r_normd"] + merged_df[,"r_blast"]
+
+  merged_df[,"bpg+bpn"] <- 
+    merged_df[,"bp_guidance"] + merged_df[,"bp_normd"]
+  merged_df[,"bpg+bpb"] <- 
+    merged_df[,"bp_guidance"] + merged_df[,"bp_blast"]
+  merged_df[,"bpn+bpb"] <- 
+    merged_df[,"bp_normd"] + merged_df[,"bp_blast"]
 
 
   #for (method in c("r_guidance", "r_normd", "r_blast")) {
@@ -305,7 +323,7 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
 # Order by arerage AUC
 exps <- unique(PLOT_DF$method)
 means <- sapply(exps, function(x) {
-  mean(subset(PLOT_DF, method == x & rand == 0.15)$auc)
+  mean(subset(PLOT_DF, method == x & rand == 0.10)$auc)
 })
 PLOT_DF$method <- factor(PLOT_DF$method, levels=exps[order(means)])
 #PLOT_DF$method <- factor(PLOT_DF$method, 
