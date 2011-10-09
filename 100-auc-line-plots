@@ -37,7 +37,7 @@ UPSTREAM_FILES <- c(
 )
 
 # Raw, Balanced Perfectly, Sacled, Balanced Ab Initio
-names(UPSTREAM_FILES) <- c("r", "bp", "s", "ba")
+names(UPSTREAM_FILES) <- c("r", "p", "s", "b")
 
 
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
@@ -94,7 +94,7 @@ U2_FILES <- sapply(SH(paste(
       strsplit(x, "\t")[[1]]
     })
 U2_FILES <-
-  data.frame(bp=U2_FILES[1,],
+  data.frame(p=U2_FILES[1,],
   sample_id=U2_FILES[2,], stringsAsFactors=F)
 rownames(U2_FILES) <- c()
 
@@ -120,7 +120,7 @@ U4_FILES <- sapply(SH(paste(
       strsplit(x, "\t")[[1]]
     })
 U4_FILES <-
-  data.frame(ba=U4_FILES[1,],
+  data.frame(b=U4_FILES[1,],
   sample_id=U4_FILES[2,], stringsAsFactors=F)
 rownames(U4_FILES) <- c()
 
@@ -150,9 +150,9 @@ experiments <- list(
   's_normd',
   # 's_blast',
   
-  'bp_guidance',
-  'bp_normd',
-  'bp_blast',
+  'p_guidance',
+  'p_normd',
+  'p_blast',
 
   # s_guidance + s_normd
   "rg+rn",
@@ -160,33 +160,13 @@ experiments <- list(
   "sg+rn+rb",
 
 
-  "bpg+bpn",
-  "bpg+bpb",
-  "bpn+bpb"
+  "pg+pn+pb",
+  "pg+pn",
+  "pg+pb",
+  "pn+pb"
 )
 
-c(
-'rG',
-'rN',
-'rG+rN',
-'rB',
-
-'sG',
-'sN',
-'sG+sN',
-
-'bpG',
-'bpN',
-'bpG+bpN',
-
-'bGN-G',
-'bGN-N',
-'bGB-G',
-'bGB-B',
-'bNB-N',
-'bNB-B'
-)
-
+experiments
 
 library(ROCR)
 PLOT_DF <- data.frame()
@@ -202,7 +182,7 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
   for (up in names(UPSTREAM_FILES)) {
 
 
-    if(up == "ba") next
+    if(up == "b") next
 
     scdf_file <- ALL_FILES_DF[,up]
     print(up)
@@ -279,12 +259,15 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
   merged_df[,"sg+rn+rb"] <- 
     merged_df[,"s_guidance"] + merged_df[,"r_normd"] + merged_df[,"r_blast"]
 
-  merged_df[,"bpg+bpn"] <- 
-    merged_df[,"bp_guidance"] + merged_df[,"bp_normd"]
-  merged_df[,"bpg+bpb"] <- 
-    merged_df[,"bp_guidance"] + merged_df[,"bp_blast"]
-  merged_df[,"bpn+bpb"] <- 
-    merged_df[,"bp_normd"] + merged_df[,"bp_blast"]
+  merged_df[,"pg+pn+pb"] <- 
+    merged_df[,"p_guidance"] + merged_df[,"p_normd"] + merged_df[,"p_blast"]
+
+  merged_df[,"pg+pn"] <- 
+    merged_df[,"p_guidance"] + merged_df[,"p_normd"]
+  merged_df[,"pg+pb"] <- 
+    merged_df[,"p_guidance"] + merged_df[,"p_blast"]
+  merged_df[,"pn+pb"] <- 
+    merged_df[,"p_normd"] + merged_df[,"p_blast"]
 
 
   #for (method in c("r_guidance", "r_normd", "r_blast")) {
@@ -323,7 +306,7 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
 # Order by arerage AUC
 exps <- unique(PLOT_DF$method)
 means <- sapply(exps, function(x) {
-  mean(subset(PLOT_DF, method == x & rand == 0.10)$auc)
+  mean(subset(PLOT_DF, method == x & rand == 0.05)$auc)
 })
 PLOT_DF$method <- factor(PLOT_DF$method, levels=exps[order(means)])
 #PLOT_DF$method <- factor(PLOT_DF$method, 
@@ -332,20 +315,20 @@ PLOT_DF$method <- factor(PLOT_DF$method, levels=exps[order(means)])
 #    'r_guidance',
 #  
 #    's_normd',
-#    'bp_normd',
+#    'p_normd',
 #  
 #    'r_blast',
-#    'bp_blast',
+#    'p_blast',
 #    
 #    's_guidance',
-#    'bp_guidance'
+#    'p_guidance'
 #  )
 #)
 PLOT_DF <- cbind(PLOT_DF, 
   list(practicality=rep("Blind to Knowns", nrow(PLOT_DF)))
 )
 PLOT_DF[,"practicality"] <- as.character(PLOT_DF[,"practicality"])
-PLOT_DF[grep("bp", PLOT_DF$method), "practicality"] <- 
+PLOT_DF[grep("p", PLOT_DF$method), "practicality"] <- 
   "Uses Knowns for Threshold Selection"
 
 # Plot rand 0.05 on the bottom
@@ -360,6 +343,29 @@ png(paste(OUT_DIR, "/auc-lineplots.png", sep=""),
   type="cairo")
 
 g <- ggplot(PLOT_DF, aes(y=auc, x=method, group=sample_id)) +
+     geom_point(aes(colour=sample_id)) +
+     geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
+     facet_grid(rand ~ practicality, scales="free") +
+     opts(legend.position = "none")
+
+print(g)
+dev.off()
+
+png(paste(OUT_DIR, "/auc-zoom-in-on-best.png", sep=""),
+  width=800, height=1000,
+  type="cairo")
+
+PLOT_DF_BEST <- subset(PLOT_DF, 
+  method == 's_guidance' |
+  method == 'sg+sn' |
+  method == 'pn+pb' |
+  method == 'p_guidance' |
+  method == 'pg+pb' |
+  method == 'pg+pn' |
+  method == 'pg+pn+pb'
+)
+
+g <- ggplot(PLOT_DF_BEST, aes(y=auc, x=method, group=sample_id)) +
      geom_point(aes(colour=sample_id)) +
      geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
      facet_grid(rand ~ practicality, scales="free") +
