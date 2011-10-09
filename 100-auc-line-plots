@@ -323,7 +323,12 @@ PLOT_DF$method <- factor(PLOT_DF$method, levels=exps[order(means)])
 #    'bp_guidance'
 #  )
 #)
-
+PLOT_DF <- cbind(PLOT_DF, 
+  list(practicality=rep("Blind to Knowns", nrow(PLOT_DF)))
+)
+PLOT_DF[,"practicality"] <- as.character(PLOT_DF[,"practicality"])
+PLOT_DF[grep("bp", PLOT_DF$method), "practicality"] <- 
+  "Uses Knowns for Threshold Selection"
 
 # Plot rand 0.05 on the bottom
 PLOT_DF$rand <- factor(PLOT_DF$rand,
@@ -333,13 +338,13 @@ library(ggplot2)
 
 
 png(paste(OUT_DIR, "/auc-lineplots.png", sep=""),
-  width=600, height=1000,
+  width=800, height=1000,
   type="cairo")
 
 g <- ggplot(PLOT_DF, aes(y=auc, x=method, group=sample_id)) +
      geom_point(aes(colour=sample_id)) +
      geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
-     facet_grid(rand ~ ., scales="free") +
+     facet_grid(rand ~ practicality, scales="free") +
      opts(legend.position = "none")
 
 print(g)
