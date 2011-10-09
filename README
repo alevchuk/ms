@@ -56,6 +56,9 @@ Running the complete experiment:
 
   Both runs above can start immediately after 009-add-random is completed.
 
+Data Availability:
+  http://biocluster.ucr.edu/projects/GROUPBALANCER/
+
 Contributing:
   This code is GPLv3. Free Software. So please don't hesitate to make a fork
   on GitHub, make changes, and send GitHub Pull Requests. I will gladly
@@ -79,3 +82,7 @@ References:
 
   O. Tange (2011): GNU Parallel - The Command-Line Power Tool, 
   ;login: The USENIX Magazine, February 2011:42-47.
+
+  R Development Core Team (2011). R: A language and environment for
+  statistical computing. R Foundation for Statistical Computing,
+  Vienna, Austria. ISBN 3-900051-07-0, URL http://www.R-project.org/.
