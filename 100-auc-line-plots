@@ -345,8 +345,9 @@ png(paste(OUT_DIR, "/auc-lineplots.png", sep=""),
 g <- ggplot(PLOT_DF, aes(y=auc, x=method, group=sample_id)) +
      geom_point(aes(colour=sample_id)) +
      geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
-     facet_grid(rand ~ practicality, scales="free") +
-     opts(legend.position = "none")
+     facet_grid(rand ~ practicality, scales="free_x") +
+     opts(legend.position = "none") 
+     #+ geom_point(data=data.frame(x=0, y=1.0), aes(x=x, y=y))
 
 print(g)
 dev.off()
@@ -358,6 +359,8 @@ png(paste(OUT_DIR, "/auc-zoom-in-on-best.png", sep=""),
 PLOT_DF_BEST <- subset(PLOT_DF, 
   method == 's_guidance' |
   method == 'sg+sn' |
+  method == 'sg+rn+rb' |
+  method == 'r_blast' |
   method == 'pn+pb' |
   method == 'p_guidance' |
   method == 'pg+pb' |
@@ -368,8 +371,9 @@ PLOT_DF_BEST <- subset(PLOT_DF,
 g <- ggplot(PLOT_DF_BEST, aes(y=auc, x=method, group=sample_id)) +
      geom_point(aes(colour=sample_id)) +
      geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
-     facet_grid(rand ~ practicality, scales="free") +
+     facet_grid(rand ~ practicality, scales="free_x") +
      opts(legend.position = "none")
+     # + geom_point(data=data.frame(x=0, y=1.0), aes(x=x, y=y))
 
 print(g)
 
