@@ -1,0 +1,326 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+options(width=1000, max.print=500000)
+
+# To run Bash commands
+SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+# Name of this script
+script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+script_path_list <- strsplit(script_path, '/')[[1]]
+script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
+script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
+script_dir  <- paste(script_dir_list, sep='/', collapse="/")
+
+# Primary locations
+EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
+UPSTREAM2 <-
+  paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
+UPSTREAM3 <-
+  paste(EXPERIMENT_NAME, "/039-boxplot-all-cutoffs-per-msa-data-out", sep="")
+
+
+
+
+dir.create(OUT_DIR, showWarnings=FALSE)
+
+
+usage_and_quit <- function() {
+  cat(paste(script_name, " ", "\n\n"))
+  cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
+  cat(paste(
+    "Required Arguments",
+    "  <sample-size> ",
+    "",
+    sep="\n"))
+  quit()
+}
+
+# Check number of arguments
+script_args <- commandArgs(trailingOnly=T)
+if(length(script_args) == 0) usage_and_quit()
+if(length(script_args) != 1) {
+  cat("ERROR: Invalid number of arguments", length(script_args), "\n")
+  usage_and_quit()
+}
+
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
+
+
+SCORE_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM2, "/sample-size", SAMPLE_SIZE, "*-seq-scores", 
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+   sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+SCORE_FILES <- t(SCORE_FILES)
+rownames(SCORE_FILES) <- NULL
+colnames(SCORE_FILES) <- c("filename", "sample_id")
+
+
+STATIC_CUT_FILES <- sapply(SH(paste(
+  "ls ", UPSTREAM3, "/sample-size", SAMPLE_SIZE, "*-static-cutoffs-tab",
+  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
+   sep="")), function(x) {
+      strsplit(x, "\t")[[1]]
+    }
+)
+STATIC_CUT_FILES <- t(STATIC_CUT_FILES)
+rownames(STATIC_CUT_FILES) <- NULL
+colnames(STATIC_CUT_FILES) <- c("filename", "sample_id")
+STATIC_CUT_FILES <- as.data.frame(STATIC_CUT_FILES)
+#print(STATIC_CUT_FILES)
+#q()
+
+# All samples get sample1's cut files
+sample1_static_cuts_filename <- as.character(
+                      subset(STATIC_CUT_FILES,
+                         sample_id ==
+                           paste("sample-size", SAMPLE_SIZE, "-id1", sep="")
+                      )$filename
+                    )
+#print(sample1_static_cuts_filename)
+#UPSTREAM_SAMPLES <- merge(SCORE_FILES, STATIC_CUT_FILES, by="sample_id")
+UPSTREAM_SAMPLES <- cbind(SCORE_FILES, sample1_static_cuts_filename)
+
+colnames(UPSTREAM_SAMPLES) <-
+  c("scores_file", "sample_id", "static_cut_file")
+
+#print(UPSTREAM_SAMPLES)
+#q()
+
+
+
+
+
+# Reshaper
+add_known_column <- function(scores_df) {
+  # Mark +/- based on the sequence name
+  scores_df <- cbind(scores_df,
+    Known=factor("Positive", levels=c("Positive", "Negative")))
+
+  locations_of_negatives <- grep("_RAND[0-9]", scores_df[,'seqid'])
+  if (length(locations_of_negatives) > 0) {
+    scores_df[locations_of_negatives, "Known"] <- "Negative"
+  }
+
+  scores_df
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PLOT_DF <- data.frame()
+
+for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
+  sample_id <- UPSTREAM_SAMPLES[sample_i, "sample_id"]
+  print(sample_id)
+
+  static_cut_file <-
+    as.character(UPSTREAM_SAMPLES[sample_i, "static_cut_file"])
+  scores_file <-
+    as.character(UPSTREAM_SAMPLES[sample_i, "scores_file"])
+
+  cuts_df <- read.table(static_cut_file, header=T, sep = "\t")
+  #    Rand          Mean               Method
+  cuts_df <- cbind(cuts_df, list(Ground_Truth='Static'))
+  names(cuts_df) <- c(
+            "Injection_Type", "Chosen_Cutoff", "Scoring_Method",
+            "Ground_Truth")
+  #print(cuts_df)
+  #q()
+
+
+  scores_df <- read.table(scores_file)
+  colnames(scores_df) <- c('scr', 'Injection_Type', 'unused', 'MSA',
+                           'Scoring_Method', 'seqid')
+  scores_df <- scores_df[,names(scores_df) != "unused"]
+
+  scores_df <- add_known_column(scores_df)
+  #print(scores_df)
+  #q()
+
+
+  #print(c("cuts_df", "scores_df", "main_df"))
+  #print(dim(cuts_df))
+  #print(dim(scores_df))
+  #q()
+
+
+  for(scoring_method in unique(scores_df$Scoring_Method)) { local({
+  scores_df <- scores_df[scores_df$Scoring_Method == scoring_method,]
+  cuts_df <- cuts_df[cuts_df$Scoring_Method == scoring_method,]
+
+  for(rand1 in setdiff(unique(scores_df$Injection_Type), 0.00)) {local({
+  cutoff <- cuts_df[cuts_df$Injection_Type == rand1, "Chosen_Cutoff"]
+
+  for(rand2 in setdiff(unique(scores_df$Injection_Type), 0.00)) {local({
+  scores_df <- scores_df[scores_df$Injection_Type == rand2,]
+
+    #cat("scoring_method\n")
+    #print(scoring_method)
+
+    #cat("rand1\n")
+    #print(rand1)
+
+    #cat("rand2\n")
+    #print(rand2)
+
+    #cat("scores_df\n")
+    #print(scores_df[1:10,]) 
+
+    #cat("cutoff\n")
+    #print(cutoff) 
+
+    # Determine the operations
+    scores_df <- cbind(scores_df, list(Operation="Keep"))
+    scores_df$Operation <- as.character(scores_df$Operation)
+    scores_df[scores_df$scr < cutoff, "Operation"] <- "Remove"
+
+    postives  <- scores_df$Known == "Positive"
+    negatives <- scores_df$Known == "Negative"
+    keeps     <- scores_df$Operation == "Keep"
+    removals  <- scores_df$Operation == "Remove"
+
+    tp <- length(which(keeps    & postives  ))
+    tn <- length(which(removals & negatives ))
+    fp <- length(which(keeps    & negatives ))
+    fn <- length(which(removals & postives  ))
+
+    #cat("tp, tn, fp, fn\n")
+    #print(c(tp, tn, fp, fn))
+    PLOT_DF <<- rbind(PLOT_DF,
+      list(sample_id=sample_id,
+           Trainded_on=rand1, Tested_on=rand2,
+           Method=scoring_method,
+           #Count_Type=factor("FP", levels=c("FP", "FN")),
+           Count_Type="FP",
+           Count=fp)
+    )
+    PLOT_DF[,"sample_id"] <<- as.character(PLOT_DF[,"sample_id"])
+    PLOT_DF[,"Method"] <<- as.character(PLOT_DF[,"Method"])
+    PLOT_DF[,"Count_Type"] <<- as.character(PLOT_DF[,"Count_Type"])
+
+    PLOT_DF <<- rbind(PLOT_DF,
+      list(sample_id=sample_id,
+           Trainded_on=rand1, Tested_on=rand2,
+           Method=scoring_method,
+           Count_Type="FN",
+           Count=fn)
+    )
+
+  })
+  }
+
+  })
+  }
+
+  })
+  }
+}
+
+
+PLOT_DF[,"Count_Type"] <-
+  factor(PLOT_DF[,"Count_Type"], levels=c("FP", "FN"))
+
+
+library(ggplot2)
+
+for(sample_id in unique(PLOT_DF$sample_id)) { local({
+  PLOT_DF <- PLOT_DF[PLOT_DF$sample_id == sample_id,]
+  print(PLOT_DF)
+  cat("-------------------\n")
+
+  png(paste(OUT_DIR, "/", sample_id, 
+    "-fp-fn-barplots-of-sample1-trained-static-cutoffs-g.png", sep=""),
+    width=300, height=900,
+    type="cairo")
+
+  g <- ggplot(subset(PLOT_DF, Method == "guidance_seq_scr"),
+       aes(x=Count_Type, y=Count, fill=Count_Type)) +
+       geom_bar(position="dodge") +
+       facet_grid(Trainded_on ~ Tested_on) +
+       opts(
+         #axis.title.x =  theme_blank(),
+         title=paste("GUIDANCE")
+       ) +
+       opts(legend.position = "none") +
+       xlab("Test Samples") +
+       ylab("Threshold Training Samples")
+  print(g)
+  dev.off() 
+
+
+
+  png(paste(OUT_DIR, "/", sample_id, 
+    "-fp-fn-barplots-of-sample1-trained-static-cutoffs-n.png", sep=""),
+    width=300, height=900,
+    type="cairo")
+
+  g <- ggplot(subset(PLOT_DF, Method == "normd_dx_mod_seq_scr"),
+       aes(x=Count_Type, y=Count, fill=Count_Type)) +
+       geom_bar(position="dodge") +
+       facet_grid(Trainded_on ~ Tested_on) +
+       opts(
+         title=paste("NorMD")
+       ) +
+       opts(legend.position = "none") +
+       xlab("Test Samples") +
+       ylab("Threshold Training Samples")
+  print(g)
+  dev.off() 
+
+
+
+  png(paste(OUT_DIR, "/", sample_id, 
+    "-fp-fn-barplots-of-sample1-trained-static-cutoffs-b.png", sep=""),
+    width=300, height=900,
+    type="cairo")
+
+  g <- ggplot(subset(PLOT_DF, Method == "blast"),
+       aes(x=Count_Type, y=Count, fill=Count_Type)) +
+       geom_bar(position="dodge") +
+       facet_grid(Trainded_on ~ Tested_on) +
+       opts(
+         title=paste("BLAST")
+       ) +
+       opts(legend.position = "none") +
+       xlab("Test Samples") +
+       ylab("Threshold Training Samples")
+
+  print(g)
+  dev.off() 
+
+})}
