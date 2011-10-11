@@ -226,6 +226,7 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
   for(scoring_method in unique(main_df$Scoring_Method)) {
   local({
   main_df <- main_df[main_df$Scoring_Method == scoring_method,]
+  print(scoring_method)
 
   for(rand in unique(main_df$Injection_Type)) {
   local({
@@ -263,15 +264,16 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
     #print(main_df)
 
 
-    print(c("tp:", tp))
-    print(c("tn:", tn))
-    print(c("fp:", fp))
-    print(c("fn:", fn))
+    #print(c("tp:", tp))
+    #print(c("tn:", tn))
+    #print(c("fp:", fp))
+    #print(c("fn:", fn))
 
     TPR <- tp / (tp + fn) 
     TNR <- tn / (tn + fp)  # = 1 - FPR
-    print(c("TPR:", TPR))
-    print(c("TNR:", TNR))
+
+    #print(c("TPR:", TPR))
+    #print(c("TNR:", TNR))
 
     cuts_df[
       cuts_df$Scoring_Method == scoring_method &
@@ -316,63 +318,87 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
     cuts_df <- subset(cuts_df, Ground_Truth == truth)
 
 
-    ## Bug fix/hack for histogram, otherwise 0s will not show up
+
+    AT1_HITS_DF <- data.frame()
+
+    for(scoring_method in unique(cuts_df$Scoring_Method)) { local({
+    cuts_df <- cuts_df[cuts_df$Scoring_Method == scoring_method,]
+    for(rand in unique(cuts_df$Injection_Type)) { local({
+    cuts_df <- cuts_df[cuts_df$Injection_Type == rand,]
+
+      count_tpr1s <- length(cuts_df[cuts_df$TPR == 1.00, "TPR"])
+      count_trn1s <- length(cuts_df[cuts_df$TNR == 1.00, "TNR"])
+      AT1_HITS_DF <<- 
+        rbind(AT1_HITS_DF, data.frame(
+          Injection_Type=rand,
+          Scoring_Method=scoring_method,
+          count_tpr1s=count_tpr1s,
+          count_tnr1s=count_trn1s,
+          stringsAsFactors=F)
+        )
+
+    })}
+    })}
+    print(AT1_HITS_DF)
+
     #print(cuts_df)
-    #print(str(cuts_df[1,]))
-    #print(cuts_df$TPR == 0)
+    #print(cuts_df$TPR)
+    #print(cuts_df$TPR != 1.00)
+
+
+    ## Hack row that we have the 1.00s extracted, remove them from plotting
+    cuts_df[cuts_df$TPR > 0.99, "TPR"] <- 1.02 # Will not show up in plot
+    cuts_df[cuts_df$TNR > 0.99, "TNR"] <- 1.02 # see scale_x_continuous()
+    #print(cuts_df)
     #q()
+
+
+    ## Bug fix/hack for histogram, otherwise 0s will not show up
     cuts_df[cuts_df$TPR == 0, "TPR"] <- 0.0001
     cuts_df[cuts_df$TNR == 0, "TNR"] <- 0.0001
     #q()
 
+    cat("---------------------------------------------------------------\n")
+    print(c(sample_id, truth))
+    print(AT1_HITS_DF)
+    print(cuts_df)
 
     png(paste(OUT_DIR, "/", sample_id, "-", truth, "-tp-rates.png", sep=""),
-      width=1000, height=1000,
+      width=1000, height=500,
       type="cairo")
 
     g <- ggplot(cuts_df) +
-
       opts(
         axis.title.x =  theme_blank(),
         title=paste(sample_id, truth, "True Positive/Negative Rates")
       ) +
       #geom_histogram(binwidth=0.01) +
-
       geom_histogram(aes(x=TPR),
         fill="red", alpha = 0.7, binwidth=0.01) + 
-
       geom_histogram(aes(x=TNR),
         fill="blue", alpha = 0.4, binwidth=0.01) +
-
-      scale_x_continuous(limits=c(0, 1)) +
-
+      scale_x_continuous(limits=c(0.00, 1.01)) +
+      geom_text(data=AT1_HITS_DF,
+        aes(x=.75, y=12, label=count_tnr1s), colour="blue",
+          hjust = 0.7, vjust = 1) +
+      geom_text(data=AT1_HITS_DF,
+        aes(x=.85, y=12, label=count_tpr1s), colour="red",
+          hjust = 0.7, vjust = 1) +
+      # scale_y_continuous(limits=c(0, 12)) +
       facet_grid(Injection_Type ~ Scoring_Method)
 
       # For a standard scaling, insert an invisible column at 1.0
       if (any(grep("50[0-9]", sample_id))) {
-        g <- g + geom_histogram(data=data.frame(x=rep(1.0, 25)), aes(x=x),
+        g <- g + geom_histogram(data=data.frame(x=rep(1.0, 5)), aes(x=x),
           fill="gray", alpha = 0.0, binwidth=0.01)
       } else {
-        g <- g + geom_histogram(data=data.frame(x=rep(1.0, 100)), aes(x=x),
+        g <- g + geom_histogram(data=data.frame(x=rep(1.0, 10)), aes(x=x),
           fill="gray", alpha = 0.0, binwidth=0.01)
       }
-     
 
     print(g)
     dev.off() 
 
-    #png(paste(OUT_DIR, "/", sample_id, "-", truth, "-tn-rates.png", sep=""),
-    #  width=1000, height=1000,
-    #  type="cairo")
-
-    #g <- ggplot(cuts_df, aes(x=TNR)) +
-    #  geom_histogram(binwidth=0.01) +
-    #  scale_y_continuous(limits=c(0, 101)) +
-    #  scale_x_continuous(limits=c(0, 1)) +
-    #  #facet_grid(Injection_Type ~ Ground_Truth)
-    #  facet_grid(Injection_Type ~ Scoring_Method)
-    #print(g)
-    #dev.off() 
   })
   }
 
