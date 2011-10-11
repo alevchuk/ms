@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# UNNAMED is a classifier of outlier sequences in multiple alignments
+# GROUPBALANCER is a classifier of outlier sequences in multiple alignments
 # Copyright (C) 2011  Aleksandr Levchuk
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,25 +16,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+options(width=10000) # use less -S
+
+# To run Bash commands
 SH <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
 
-# Name of this script and directory where this script is located
-script_path <- sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
+# Name of this script
+script_path <-
+  sub("--file=","", commandArgs()[grep("--file=", commandArgs())])
 script_path_list <- strsplit(script_path, '/')[[1]]
 script_name <- script_path_list[[length(script_path_list)]]
+
+# Directory where this script is located
 script_dir_list  <- script_path_list[1:(length(script_path_list)-1)]
 script_dir  <- paste(script_dir_list, sep='/', collapse="/")
 
 # Primary locations
 EXPERIMENT_NAME <- SH("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
-UPSTREAM <- paste(EXPERIMENT_NAME, "/037-plot-matthews-max-data-out", sep="")
 OUT_DIR <- paste(EXPERIMENT_NAME, "/", script_name, "-data-out", sep="")
-dir.create(OUT_DIR, showWarnings=F)
-
+UPSTREAM <- paste(EXPERIMENT_NAME, "/029-collect-scores-data-out", sep="")
 
 # How to use this script
 usage_and_quit <- function() {
-  cat(paste(script_name, " Plots known Mattew's max cutoffs", "\n\n"))
+  cat(paste(script_name, " plots max Matthews correlation coefficient",
+    "\n\n"))
   cat(paste("Usage:", script_name, "<sample-size>", "\n\n"))
   cat(paste(
     "Required Arguments",
@@ -52,139 +57,300 @@ if(length(script_args) != 1) {
   usage_and_quit()
 }
 
-SAMPLE_SIZE <- script_args[[1]]
+# Get arguments
+SAMPLE_SIZE  <- script_args[[1]]
 
-
-
-
-CUTOFFS_SAMPLE_FILES <- sapply(SH(paste(
-  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-cutoffs",
-  " | ruby -ne '$_ =~ /(sample-size.*-id[0-9]+)/; puts \"#{$_.chomp}\t#{$1}\"'",
-  sep="")), function(x) {
-      strsplit(x, "\t")[[1]]
-    }
-)
-CUTOFFS_SAMPLE_FILES <- t(CUTOFFS_SAMPLE_FILES)
-rownames(CUTOFFS_SAMPLE_FILES) <- NULL
-colnames(CUTOFFS_SAMPLE_FILES) <- c("filename", "sample_id")
-
-
+# Project conventions
+SAMPLE_FILES <- SH(paste(
+  "ls ", UPSTREAM, "/sample-size", SAMPLE_SIZE, "*-seq-scores",
+  " | grep -v id5", # no ID50s to same real estate in plots
+  sep=""))
 
 library(ggplot2)
 
-for (file_id in 1:nrow(CUTOFFS_SAMPLE_FILES)) {
-  sample_file <- CUTOFFS_SAMPLE_FILES[file_id, "filename"] 
-  sample_id <- CUTOFFS_SAMPLE_FILES[file_id, "sample_id"] 
-
-  # Data for one sample
-  sample_df <- read.table(sample_file, header=F, sep="\t")
-  # E.g.: 0.05    0.71099 "guidance_seq_scr"      "Known" "ID50_KOG0001"
-  colnames(sample_df) <- c("Rand", "Cutoff", "Method", "Tracking", "MSA")
-
-
-
-  means_df <- data.frame()
-  
-  for(method in unique(sample_df$Method)) {
-  local({
-    sample_df <- subset(sample_df, Method == method)
-    #print(sample_df)
-    #cat("\n\n")
-
-
-  # How far each MSA Ab Initio prediction was from the Known Matt Max cutoff?
-
-  kn <- subset(sample_df, Tracking == "Known")
-  ab <- subset(sample_df, Tracking == "Ab Initio")
-  both <- merge(kn, ab, by=c("MSA", "Rand", "Method"))
-
-  new_df <-
-    data.frame(
-      Rand=both$Rand,
-      Cutoff=(both$Cutoff.x - both$Cutoff.y),
-      Method=both$Method,
-      Tracking=rep("Ab_Initio_Diff", nrow(both)),
-      MSA=both$MSA
+# Font change approach from 
+# http://stackoverflow.com/questions/4094094/modifying-fonts-in-ggplot2/4104295
+theme_min <- function (size=10, font=NA, face='plain', axisColor='#999999', 
+    textColor='black') 
+{
+    theme_text = function(...)
+        ggplot2::theme_text(family=font, face=face, colour=textColor, 
+            size=size, ...)
+opts(
+    axis.text.x = theme_text(),
+    axis.text.y = theme_text(),
+    axis.title.x = theme_text(),
+    axis.title.y = theme_text(angle=90, vjust=unit(0.5, "mm")),
+    strip.text.x = theme_text(),
+    strip.text.y = theme_text(angle=-90),
+    legend.text = theme_text(hjust=0),
+    legend.title = theme_text(hjust=0),
+    plot.title = theme_text(hjust=0),
+    plot.margin = unit(c(3,3,3,3), "mm")
     )
-
-  sample_df <- rbind(sample_df, new_df)
-  #print(sample_df)
-  #quit()
-
-
-
-
-
-  #for(tacking in unique(sample_df$Tracking)) {
-  for(tacking in c("Known", "Ab_Initio_Diff")) {
-  local({
-    sample_df <- subset(sample_df, Tracking == tacking)
-    #print(sample_df)
-    #cat("\n\n")
-
-    png(type="cairo",
-      paste(OUT_DIR, "/", sample_id, "-", method, "-", tacking, ".png", sep="")
-    )
-
-    sample_df$Rand <- as.factor(sample_df$Rand)
-
-    pl <- ggplot(data=sample_df, aes(x=Rand, y=Cutoff)) +
-      geom_boxplot()
-
-      #geom=c("boxplot", "jitter"))
-
-    # if (method == "normd_dx_mod_seq_scr") {
-    #   pl <- pl + ylim(-0.05, 0.001)
-    # }
-    print(pl)
-    dev.off()
-
-    cat(sample_id, method, tacking, "done\n")
-
-    # Exprot medians, these will be the static cutoffs
-    if (tacking == "Known") {
-      for(rand in unique(sample_df$Rand)) {
-        cutoffs <- subset(sample_df, Rand == rand)$Cutoff
-        means_df <<- rbind(means_df, 
-                      data.frame(
-                        Rand=as.numeric(rand),
-                        Mean=mean(cutoffs),
-                        Method=method
-                      )
-                    )
-      }
-    }
-
-  }) # Tracking closes
-  }
-
-
-
-
-  }) # Method closes
-  }
-
-
-
-
-  export_file <-
-    sprintf("%s/%s-static-cutoffs-tab", OUT_DIR, sample_id)
-  print(export_file)
-  write.table(means_df, sep="\t", row.names=F, file=export_file)
-
-
-  #  #attach(mtcars)
-  #  #par(mfrow=c(2,1)) 
-
-  #  plot(cutoffs, accuracy, xlim=c(range_x_min,range_x_max),
-  #    main=paste("Rand", rand_ratio, m1, "Best cutoff:", signif(a_cutoff, 2)))
-  #  
-  #  plot(cutoffs, custom1 , xlim=c(range_x_min,range_x_max),
-  #    main=paste("Rand", rand_ratio, m1, "Best cutoff:", signif(c1_cutoff,2)),
-  #    ylab="sensitivity + specificity")
-
-  #  dev.off()
-
-
-
 }
+
+
+
+dir.create(OUT_DIR, showWarnings=FALSE)
+
+
+write_table_of_matthews_max_static <-
+function(scores_df, injection_types, scoring_methods, info, cutoffs_outfile) {
+  print(scoring_methods)
+
+  CUTS_DF <- data.frame()
+      
+  # Do not plot the 0 injections
+  injection_types <- injection_types[injection_types != 0.00]
+
+  for(injection_type in injection_types) {
+    local({
+      scores_df <- scores_df[scores_df[,'rand'] == injection_type,]
+
+      #print(c("scores_df", "injection_type"))
+      #print(scores_df) # Empty! ???
+      #print(injection_type)
+      #q()
+
+      for(scoring_method in scoring_methods) {
+        local({
+          scores_df <- scores_df[scores_df[,'method'] == scoring_method,]
+
+          #print(c("scores_df", "scoring_method"))
+          #print(scores_df)
+          #print(scoring_method)
+          #q()
+
+          # Sort by score (lowest scores on the bottom)
+          scores_df <- scores_df[order(-scores_df[,"scr"]),]
+
+          # Frequently used subset (after sorting!)
+          all_scores <- scores_df[,"scr"] 
+
+          ## Choose cutoffs
+          u_scores <- unique(scores_df$scr)
+          cutoffs <- sapply(1:(length(u_scores) - 1), function(i) {
+            u_scores[i] / 2 + u_scores[i + 1] / 2
+          })
+
+          # Running into one of these extreams should become
+          # obvious, but we have them here to capture all possible cutoffs
+          cutoffs <- c(max(all_scores) + 10, cutoffs, min(all_scores) - 10)
+
+          # True positives
+          tp <- sapply(cutoffs, function(cutoff) {
+            predicted_positive <- (all_scores > cutoff)
+            length(which(scores_df[predicted_positive, "Known"] == "Positive"))
+          })
+
+          # True negatives
+          tn <- sapply(cutoffs, function(cutoff) {
+            predicted_negative <- (all_scores < cutoff)
+            length(which(scores_df[predicted_negative, "Known"] == "Negative"))
+          })
+
+          # False positives
+          fp <- sapply(cutoffs, function(cutoff) {
+            predicted_positive <- (all_scores > cutoff)
+            length(which(scores_df[predicted_positive, "Known"] != "Positive"))
+          })
+
+          # False negatives
+          fn <- sapply(cutoffs, function(cutoff) {
+            predicted_negative <- (all_scores < cutoff)
+            length(which(scores_df[predicted_negative, "Known"] != "Negative"))
+          })
+
+          m <- (tp * tn) - (fp * fn)
+
+	  #print(scores_df)
+	  #print(cutoffs)
+	  #print(tp)
+          #print(tn)
+          #print(fp)
+          #print(fn)
+	  #print(m)
+ 	  #q()
+
+          # Order of next 2 lines matters
+          m[fp == 0 & fn == 0] <- 2  # 2x best
+          m[tp == 0 | tn == 0] <- -1 # worst
+
+          matthews <- m
+          mmax <- max(matthews)
+          m_pos <- which(matthews == mmax)
+          m_cutoff <- cutoffs[m_pos]
+
+          #print(c("scores_df"))
+          #print(scores_df)
+          #cat("\n")
+          #print(c(
+          # #"cutoffs",
+          # "matthews","mmax","m_pos", "m_cutoff"))
+          ##print(cutoffs)
+          #print(matthews)
+          #print(mmax)
+          #print(m_pos)
+          #print(m_cutoff)
+          #cat("--------------------------------------------------\n")
+          #cat("\n")
+
+          CUTS_DF <<-
+            rbind(CUTS_DF, 
+              data.frame(
+                Rand=signif(injection_type, 2),
+                Mean=m_cutoff[[1]],
+                Method=factor(scoring_method, levels=scoring_methods)
+              )
+            )
+
+        })
+      } # Scoring  method
+      # q()
+
+    })
+  } # Injection Type
+
+  #print(CUTS_DF)
+  #q()
+
+  write.table(CUTS_DF, file=cutoffs_outfile, sep="\t",
+    row.names=F, col.names=T)
+
+  return(CUTS_DF)
+}
+
+
+
+
+
+
+
+# Reshaper
+add_known_column <- function(scores_df) {
+  # Mark +/- based on the sequence name
+  scores_df <- cbind(scores_df,
+    Known=factor("Positive", levels=c("Positive", "Negative")))
+
+  locations_of_negatives <- grep("_RAND[0-9]", scores_df[,'seqid'])
+  if (length(locations_of_negatives) > 0) {
+    scores_df[locations_of_negatives, "Known"] <- "Negative"
+  }
+
+  scores_df
+}
+
+
+
+#
+#  # Plot Matthews 
+#  png(paste(info$sample_dir, "/", info$msa, ".png", sep=""),
+#      width=500, height=500, type="cairo")
+#
+#  g <- ggplot(data=mini_df,
+#       aes(x=Injection_Type, y=Max_Matt_Cutoff, color=Ground_Truth)) +
+#       geom_point() + scale_size(legend = FALSE) +
+#       geom_line(alpha=.5, size=3) +
+#       facet_grid(Scoring_Method ~ ., scales = "free") +
+#       theme_min(size=18) +
+#       opts(title=paste("MSA", info$msa))
+#
+#    #geom_line() + geom_point() + opts(title=scoring_method)
+#
+#  print(g)
+#  dev.off()
+#
+#
+
+PLOT_DF <- data.frame()
+
+for(sample_file in SAMPLE_FILES) {
+
+  scores_df <- read.table(sample_file)
+  colnames(scores_df) <-
+    c('scr', 'rand', 'unused', 'msa', 'method', 'seqid')
+
+  ## I should have used simpler method names earlier
+  #scores_df[, "method"] <- as.character(scores_df[, "method"])
+  #scores_df[scores_df$method == "blast", "method"] <- "BLAST"
+  #scores_df[scores_df$method == "guidance_seq_scr", "method"] <- "GUIDANCE"
+  #scores_df[scores_df$method == "normd_dx_mod_seq_scr", "method"] <- "NorMD"
+
+  injection_types <- 
+    as.numeric(sort(unique(as.character(scores_df[,'rand']))))
+
+  scoring_methods <- sort(as.character(unique(scores_df[,'method'])))
+
+  sample_id <- SH(sprintf(
+   "ruby -e '\"%s\" =~ /sample-size[0-9]+-id([0-9]+)/; puts $1'",
+   sample_file))
+
+  sample_prefix <-
+    paste(OUT_DIR, "/sample-size", SAMPLE_SIZE, "-id", sample_id, sep="")
+  cutoffs_outfile <-
+    paste(sample_prefix, "-static-cutoffs-tab", sep="")
+
+  # All alignments in the sample
+  msa_list <- sort(as.character(unique(scores_df[,'msa'])))
+
+
+  #
+  # Check that all injection types exists
+  #
+  injection_types_here <-
+    as.numeric(sort(unique(as.character(scores_df[,'rand']))))
+  non_existing_injection_types <-
+    setdiff(injection_types, injection_types_here)
+
+
+  #
+  # Check that all scoring methods exists
+  #
+  scoring_methods_here <-
+    sort(as.character(unique(scores_df[,'method'])))
+  #scoring_methods_here <- 'blast'
+
+  non_existing_scoring_methods <-
+    setdiff(scoring_methods_here,scoring_methods)
+
+
+  if (length(non_existing_injection_types) > 0) {
+    write(paste("WARNING: Rand", non_existing_injection_types,
+      " does not exist for MSA ", msa, " in ", sample_dir, sep=""),
+      stderr())
+
+  } else if (length(non_existing_scoring_methods) > 0) {
+     write(paste("WARNING: ", non_existing_scoring_methods,
+       " does not exist for MSA ", msa, " in ", sample_dir, sep=""),
+       stderr())
+
+  } else {
+
+    scores_df <- add_known_column(scores_df)
+
+    cuts <-
+    write_table_of_matthews_max_static(scores_df,
+      injection_types = injection_types,
+      scoring_methods = scoring_methods,
+      info = list(sample_id=sample_id, sample_dir=sample_dir),
+      cutoffs_outfile = cutoffs_outfile)
+
+    PLOT_DF <<- rbind(PLOT_DF, cbind(cuts, list(sample_id=sample_id)))
+
+  }
+}
+
+
+png(paste(OUT_DIR, "/static-cutoffs-lineplots.png", sep=""),
+  width=500, height=500,
+  type="cairo") 
+
+g <- ggplot(PLOT_DF, aes(y=Mean, x=Rand, group=sample_id)) +
+     geom_point(aes(colour=sample_id)) +
+     geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
+     facet_grid(Method ~ ., scales="free_y")
+
+print(g)
+
+dev.off()
