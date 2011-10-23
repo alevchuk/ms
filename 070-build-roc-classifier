@@ -29,8 +29,8 @@ EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
 UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "029-collect-scores-data-out", sep="/")
 #UPSTREAM2 <- paste(EXPERIMENT_NAME,
 #                   "/062-balance-scores-perfectly-data-out", sep="")
-#UPSTREAM3 <- paste(EXPERIMENT_NAME,
-#                   "/061-scale-scores-data-out", sep="")
+UPSTREAM3 <- paste(EXPERIMENT_NAME,
+                   "/061-scale-scores-data-out", sep="")
 #UPSTREAM4 <- paste(EXPERIMENT_NAME,
 #                   "/060-balance-scores-data-out", sep="")
 
@@ -74,18 +74,45 @@ sample_list <- sh(sprintf("ls %s/sample-size%s-*-seq-scores",
 
 
 
+sample_list2 <- sh(sprintf("ls %s/sample-size%s-*-scaled-scores-tab",
+  UPSTREAM3, SAMPLE_SIZE))
+
+#print(sample_list)
+#print(sample_list2)
+#q()
+
+
 library(ROCR)
 
 ROC_DF    <- data.frame()
 ROCR_LIST <- list()
 
-sample_id <- 0 # TODO: Don't rely on the alphabetical order like that
+sample_id <- 0 # TODO: Don't rely on the alphabetical order
 for(sample_file in sample_list[order(sample_list)]) {
   sample_id <- sample_id + 1
+
+  sample_file_scaled <-  sample_list2[order(sample_list2)][[sample_id]]
+  #print(sample_file)
+  #print(sample_file_scaled)
+
+  MAIN_DF_S <- read.table(sample_file_scaled,
+    col.names=c("score", "rand", "unused_column", "msa", "method", "seq"))
+  MAIN_DF_S[,"unused_column"] <- NULL
+  MAIN_DF_S[, "method"] <- as.character(MAIN_DF_S[, "method"])
+  MAIN_DF_S <- MAIN_DF_S[MAIN_DF_S$method != "blast",]
+  MAIN_DF_S[MAIN_DF_S$method == "normd_dx_mod_seq_scr", "method"] <- "Scaled norMD"
+  MAIN_DF_S[MAIN_DF_S$method == "guidance_seq_scr", "method"] <- "Scaled GUIDANCE"
+
 
   MAIN_DF <- read.table(sample_file,
     col.names=c("score", "rand", "unused_column", "msa", "method", "seq"))
   MAIN_DF[,"unused_column"] <- NULL
+  MAIN_DF[, "method"] <- as.character(MAIN_DF[, "method"])
+  MAIN_DF[MAIN_DF$method == "blast", "method"] <- "BLAST"
+  MAIN_DF[MAIN_DF$method == "normd_dx_mod_seq_scr", "method"] <- "norMD"
+  MAIN_DF[MAIN_DF$method == "guidance_seq_scr", "method"] <- "GUIDANCE"
+
+  MAIN_DF <- rbind(MAIN_DF_S, MAIN_DF)
 
   random_ratios <- unique(MAIN_DF[,"rand"])
   random_ratios <- random_ratios[order(random_ratios)]
@@ -119,6 +146,7 @@ for(sample_file in sample_list[order(sample_list)]) {
       ROCR_LIST <<- c(ROCR_LIST, pred)
       ROC_DF <<- rbind(ROC_DF, data.frame(
         leg_label=leg_label,
+        auc=auc,
         random_ratio=random_ratio,
         scoring_method=as.character(method)[[1]],
         rocr_id=length(ROCR_LIST),
