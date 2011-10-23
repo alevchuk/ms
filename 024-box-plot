@@ -1,0 +1,116 @@
+#!/usr/bin/env Rscript
+
+# UNNAMED is a classifier of outlier sequences in multiple alignments
+# Copyright (C) 2011  Aleksandr Levchuk
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+sh <- function(cmd){lines <- readLines(p <- pipe(cmd)); close(p); lines}
+
+SAMPLE_SIZE <- 100
+EXPERIMENT_NAME <- sh("ls -1d ./trial-*/ | tail -1 | cut -d/ -f 2")
+
+MAIN_DF <- data.frame()
+
+UPSTREAM_DIR <- paste(EXPERIMENT_NAME, "014-get-scores-data-out", sep="/")
+OUT_DIR <- paste(EXPERIMENT_NAME, "024-box-plot-out", sep="/")
+
+msa_names <- dir(paste(UPSTREAM_DIR,
+  paste("sample-size", SAMPLE_SIZE, sep=""), sep="/"), "-scr*", full.names=T)
+
+scr.list <-
+  lapply(msa_names, read.table, col.names=c("score", "msa.filename"))
+names(scr.list) <- msa_names
+
+for(sample_name in names(scr.list)) {
+  cmd <- paste("expr '", sample_name, "' : '.*sample-size", SAMPLE_SIZE, 
+    ".*", "id\\([0-9]\\+\\)'", sep="")
+  sample_number <- sh(cmd)
+
+  cmd <- paste("expr '", sample_name, "' : '.*sample-size", SAMPLE_SIZE, 
+    ".*", "rand\\([.0-9]\\+\\)'", sep="")
+  random_ratio <- sh(cmd)
+  if (random_ratio == "") random_ratio <<- 0
+
+  for (scr in scr.list[[sample_name]][,"score"]) {
+    MAIN_DF <<- rbind(MAIN_DF,
+      list(as.numeric(sample_number), as.numeric(random_ratio),
+      scr, scr)
+    )
+  }
+}
+
+#print(MAIN_DF)
+
+colnames(MAIN_DF) <-
+  c("sample.number", "random.ratio", "msa.filename", "score")
+
+invisible(
+  lapply (unique(MAIN_DF[,"sample.number"]), function (sample_number) {
+
+    dir.create(OUT_DIR, showWarnings=F)
+    sh(paste("cp 024-box-plot-scripts/*html ", OUT_DIR, sep=""))
+
+    png(paste(OUT_DIR, "/sample-", sample_number, ".png", sep=""),
+    height=600, width=1000,
+    type="cairo")
+
+    subset_df <- MAIN_DF[MAIN_DF[,"sample.number"] == sample_number,]
+    random_ratios <- unique(subset_df[,"random.ratio"])
+    all_scores <-
+    lapply(random_ratios, function(random_ratio) {
+      subset_subset_df <-
+        subset_df[subset_df[,"random.ratio"] == random_ratio, ]
+      scores <- subset_subset_df[,"score"]
+
+      dropped_msa_list <- subset_subset_df[scores == 0,]
+      scores <- scores[scores != 0] # Drop
+      if (nrow(dropped_msa_list) != 0) print(dropped_msa_list)
+      #scores[scores == 0] <- 1e-5
+
+      scores
+    })
+    #print(all_scores)
+
+
+    boxplot(all_scores, #ylab="GUIDANCE Score",
+      #range=0, # no outliers
+      #ylim = c(1e-5,1),
+      axes=FALSE, ylab="",
+      xlab="Amount of foreign residues after injection"
+      #, log="y"
+    )
+
+    axis(2, seq(0,1,by=0.1), las=2)
+
+    ## TODO: Use random_ratios to generate labels
+    lables <- c("Original", "(0, 5%]", "(5%, 10%]", "(10%, 15%]",
+        "(15%, 20%]", "(20%, 25%]","(25%, 30%]","(30%, 35%]",
+        "(35%, 40%]", "(40%, 45%]", "(45%, 50%]"
+        )
+
+    axis(1, 1:length(lables), labels=lables)
+
+    title(paste("Sample-", sample_number, " (Means: ", 
+    paste(sapply(all_scores, function(x){sprintf("%.3f", mean(x))}),
+    sep="", collapse=" , "),
+    ")",
+    sep=""))
+
+    dev.off()
+  })
+)
+
+# merge(tables[[1]], tables[[2]], by="V1")
+

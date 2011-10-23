@@ -367,6 +367,9 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
       width=1000, height=500,
       type="cairo")
 
+    # axis.text.x = theme_text(size=16),
+    # axis.text.y = theme_text(size=16),
+
     g <- ggplot(cuts_df) +
       opts(
         axis.title.x =  theme_blank(),
@@ -379,13 +382,14 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
         fill="blue", alpha = 0.4, binwidth=0.01) +
       scale_x_continuous(limits=c(0.00, 1.01)) +
       geom_text(data=AT1_HITS_DF,
-        aes(x=.75, y=12, label=count_tnr1s), colour="blue",
+        aes(x=.75, y=12, label=count_tnr1s), colour="blue", size=5,
           hjust = 0.7, vjust = 1) +
       geom_text(data=AT1_HITS_DF,
-        aes(x=.85, y=12, label=count_tpr1s), colour="red",
+        aes(x=.85, y=12, label=count_tpr1s), colour="red", size=5,
           hjust = 0.7, vjust = 1) +
       # scale_y_continuous(limits=c(0, 12)) +
-      facet_grid(Injection_Type ~ Scoring_Method)
+      facet_grid(Injection_Type ~ Scoring_Method) +
+      scale_y_continuous(breaks = 1:100 * 4, labels = 1:100 * 4) 
 
       # For a standard scaling, insert an invisible column at 1.0
       if (any(grep("50[0-9]", sample_id))) {
@@ -395,6 +399,19 @@ for (sample_i in 1:nrow(UPSTREAM_SAMPLES)) {
         g <- g + geom_histogram(data=data.frame(x=rep(1.0, 10)), aes(x=x),
           fill="gray", alpha = 0.0, binwidth=0.01)
       }
+
+      g <- g +
+      opts(
+        axis.title.y = theme_text(size=18),
+        axis.title.x = theme_text(size=18),
+        axis.text.x =  theme_text(size=18),
+        axis.text.y =  theme_text(size=18),
+        legend.text =  theme_text(size=18),
+        legend.title = theme_text(size=18),
+        strip.text.x = theme_text(size=18),
+        strip.text.y = theme_text(size=18),
+        plot.title =   theme_text(size=18)
+      )
 
     print(g)
     dev.off() 

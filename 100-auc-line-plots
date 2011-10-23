@@ -289,7 +289,7 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
 
       PLOT_DF <<-
         rbind(PLOT_DF,
-              list(sample_id=sample_id, method=method, auc=auc, rand=rand))
+              list(sample_id=sample_id, method=method, AUC=auc, rand=rand))
 
       PLOT_DF[,"method"] <<- as.character(PLOT_DF[,"method"])
       PLOT_DF[,"sample_id"] <<- as.character(PLOT_DF[,"sample_id"])
@@ -303,10 +303,10 @@ for(sample_id in ALL_FILES_DF$sample_id) { local({
 #q()
 
 
-# Order by arerage AUC
+# Order by average AUC
 exps <- unique(PLOT_DF$method)
 means <- sapply(exps, function(x) {
-  mean(subset(PLOT_DF, method == x & rand == 0.05)$auc)
+  mean(subset(PLOT_DF, method == x & rand == 0.05)$AUC)
 })
 PLOT_DF$method <- factor(PLOT_DF$method, levels=exps[order(means)])
 #PLOT_DF$method <- factor(PLOT_DF$method, 
@@ -329,20 +329,20 @@ PLOT_DF <- cbind(PLOT_DF,
 )
 PLOT_DF[,"practicality"] <- as.character(PLOT_DF[,"practicality"])
 PLOT_DF[grep("p", PLOT_DF$method), "practicality"] <- 
-  "Uses Knowns for Threshold Selection"
+  "Knowns for Threshold Selection"
 
 # Plot rand 0.05 on the bottom
 PLOT_DF$rand <- factor(PLOT_DF$rand,
   levels=sort(unique(PLOT_DF$rand), decreasing=T))
 
 library(ggplot2)
+library(RSvgDevice)
 
 
-png(paste(OUT_DIR, "/auc-lineplots.png", sep=""),
-  width=900, height=1000,
-  type="cairo")
+devSVG(paste(OUT_DIR, "/auc-lineplots.svg", sep=""),
+  width=9, height=10)
 
-g <- ggplot(PLOT_DF, aes(y=auc, x=method, group=sample_id)) +
+g <- ggplot(PLOT_DF, aes(y=AUC, x=method, group=sample_id)) +
      geom_point(aes(colour=sample_id)) +
      geom_line(aes(colour=sample_id)) +
      #geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
@@ -351,6 +351,21 @@ g <- ggplot(PLOT_DF, aes(y=auc, x=method, group=sample_id)) +
      theme_bw() +
      scale_colour_grey()
      #+ geom_point(data=data.frame(x=0, y=1.0), aes(x=x, y=y))
+
+g <- g +
+opts(
+  axis.title.y = theme_text(size=18),
+  axis.title.x = theme_text(size=18),
+  axis.text.x =  theme_text(size=18),
+  axis.text.y =  theme_text(size=18),
+  legend.text =  theme_text(size=18),
+  #legend.title = theme_text(size=18),
+  legend.title = theme_blank(),
+  strip.text.x = theme_text(size=18),
+  strip.text.y = theme_text(size=18),
+  plot.title =   theme_text(size=18)
+) +
+ opts(axis.text.x = theme_text(angle = 45, size = 18, colour = "black"))
 
 print(g)
 dev.off()
@@ -368,12 +383,12 @@ PLOT_DF_BEST <- subset(PLOT_DF,
   method == 'pg+pn+pb'
 )
 
-png(paste(OUT_DIR, "/auc-zoom-in-on-best.png", sep=""),
-  width=900, height=400,
-  type="cairo")
+devSVG(paste(OUT_DIR, "/auc-zoom-in-on-best.svg", sep=""),
+  width=9, height=4)
+  #type="cairo")
 
 g <- ggplot(subset(PLOT_DF_BEST, rand == 0.05),
-     aes(y=auc, x=method, group=sample_id)) +
+     aes(y=AUC, x=method, group=sample_id)) +
      geom_point(aes(colour=sample_id)) +
      geom_line(aes(colour=sample_id)) +
      #geom_line(aes(colour=sample_id, size=sample_id, alpha=0.9)) +
@@ -382,6 +397,22 @@ g <- ggplot(subset(PLOT_DF_BEST, rand == 0.05),
      theme_bw() +
      scale_colour_grey()
      # + geom_point(data=data.frame(x=0, y=1.0), aes(x=x, y=y))
+
+g <- g +
+opts(
+  axis.title.y = theme_text(size=18),
+  axis.title.x = theme_text(size=18),
+  axis.text.x =  theme_text(size=18),
+  axis.text.y =  theme_text(size=18),
+  legend.text =  theme_text(size=18),
+  #legend.title = theme_text(size=18),
+  legend.title = theme_blank(),
+  strip.text.x = theme_text(size=18),
+  strip.text.y = theme_text(size=18),
+  plot.title =   theme_text(size=18)
+) + 
+ opts(axis.text.x = theme_text(angle = 45, size = 18, colour="black"))
+
 
 print(g)
 
