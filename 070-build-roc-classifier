@@ -99,9 +99,35 @@ for(sample_file in sample_list[order(sample_list)]) {
     col.names=c("score", "rand", "unused_column", "msa", "method", "seq"))
   MAIN_DF_S[,"unused_column"] <- NULL
   MAIN_DF_S[, "method"] <- as.character(MAIN_DF_S[, "method"])
+
+
+  # Hide Blast Scaled
   MAIN_DF_S <- MAIN_DF_S[MAIN_DF_S$method != "blast",]
+
+
   MAIN_DF_S[MAIN_DF_S$method == "normd_dx_mod_seq_scr", "method"] <- "Scaled norMD"
   MAIN_DF_S[MAIN_DF_S$method == "guidance_seq_scr", "method"] <- "Scaled GUIDANCE"
+
+
+
+  # Combined classification
+  COMBINED_DF <- merge(
+    MAIN_DF_S[MAIN_DF_S$method == "Scaled GUIDANCE",],
+    MAIN_DF_S[MAIN_DF_S$method == "Scaled norMD",],
+    by=c("rand", "msa", "seq"))
+
+  COMBINED_DF[, "score"] <- COMBINED_DF[, "score.x"] + COMBINED_DF[, "score.y"]
+  COMBINED_DF[, "method"] <- "sG + sN"
+  COMBINED_DF[,"score.x"] <- NULL
+  COMBINED_DF[,"score.y"] <- NULL
+  COMBINED_DF[,"method.x"] <- NULL
+  COMBINED_DF[,"method.y"] <- NULL
+
+
+
+  # # Hide norMD and GUIDNACE Scaled
+  # MAIN_DF_S <- MAIN_DF_S[MAIN_DF_S$method != "Scaled norMD",]
+  # MAIN_DF_S <- MAIN_DF_S[MAIN_DF_S$method != "Scaled GUIDANCE",]
 
 
   MAIN_DF <- read.table(sample_file,
@@ -112,7 +138,8 @@ for(sample_file in sample_list[order(sample_list)]) {
   MAIN_DF[MAIN_DF$method == "normd_dx_mod_seq_scr", "method"] <- "norMD"
   MAIN_DF[MAIN_DF$method == "guidance_seq_scr", "method"] <- "GUIDANCE"
 
-  MAIN_DF <- rbind(MAIN_DF_S, MAIN_DF)
+  #MAIN_DF <- rbind(MAIN_DF_S, MAIN_DF)
+  MAIN_DF <- rbind(MAIN_DF, COMBINED_DF)
 
   random_ratios <- unique(MAIN_DF[,"rand"])
   random_ratios <- random_ratios[order(random_ratios)]

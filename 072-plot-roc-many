@@ -121,13 +121,27 @@ ROC_DF <- subset(ROC_DF, random_ratio == inj)
   #print(ROC_DF)
   #q()
 
+  width_vec <- numeric()
+  color_vec <- numeric()
+  legend_vec <- character()
+
   for (m in length(scoring_methods):1) {
   local({
     ROC_DF <- subset(ROC_DF, scoring_method == scoring_methods[m])
     
     rocr <- ROCR_LIST[[ROC_DF$rocr_id]]
     p4plot <- performance(rocr, "tpr", "fpr")
-    plot(p4plot, col=m, lwd=(m + 1)**2, add=T)
+
+    wi <- (m + 1)**2
+    co <- m
+
+    if (m >= 4) co <- co + 1 # Bright blue instead of dark blue
+
+    width_vec <<- c(wi, width_vec)
+    color_vec <<- c(co, color_vec)
+    legend_vec <<- c(as.character(ROC_DF$leg_label), legend_vec)
+
+    plot(p4plot, col=co, lwd=wi, add=T)
   })
   }
 
@@ -145,11 +159,11 @@ ROC_DF <- subset(ROC_DF, random_ratio == inj)
   
   
   legend("bottomright", inset=0.037,
-    paste(as.character(ROC_DF$leg_label, sep="\n")),
+    paste(legend_vec, sep="\n"),
     title=paste("Injection Amount:", inj, "\n",
                 "auc = area under the curve"),
-    col = 1:length(ROC_DF$leg_label),#c(c_1),
-    lwd = (1:length(ROC_DF$leg_label))**2,#c(w_1),
+    col = color_vec,
+    lwd = width_vec,
 
     cex=1.5)
   dev.off()
