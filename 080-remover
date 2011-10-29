@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# UNNAMED is a classifier of outlier sequences in multiple alignments
+# UNNAMED finds nonmember contaminations in protein sequence families
 # Copyright (C) 2011  Aleksandr Levchuk
 #
 # This program is free software: you can redistribute it and/or modify
