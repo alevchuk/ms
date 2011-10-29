@@ -110,19 +110,6 @@ for(sample_file in sample_list[order(sample_list)]) {
 
 
 
-  # Combined classification
-  COMBINED_DF <- merge(
-    MAIN_DF_S[MAIN_DF_S$method == "Scaled GUIDANCE",],
-    MAIN_DF_S[MAIN_DF_S$method == "Scaled norMD",],
-    by=c("rand", "msa", "seq"))
-
-  COMBINED_DF[, "score"] <- COMBINED_DF[, "score.x"] + COMBINED_DF[, "score.y"]
-  COMBINED_DF[, "method"] <- "sG + sN"
-  COMBINED_DF[,"score.x"] <- NULL
-  COMBINED_DF[,"score.y"] <- NULL
-  COMBINED_DF[,"method.x"] <- NULL
-  COMBINED_DF[,"method.y"] <- NULL
-
 
 
   # # Hide norMD and GUIDNACE Scaled
@@ -137,6 +124,22 @@ for(sample_file in sample_list[order(sample_list)]) {
   MAIN_DF[MAIN_DF$method == "blast", "method"] <- "BLAST"
   MAIN_DF[MAIN_DF$method == "normd_dx_mod_seq_scr", "method"] <- "norMD"
   MAIN_DF[MAIN_DF$method == "guidance_seq_scr", "method"] <- "GUIDANCE"
+
+
+  # Combined classification
+  COMBINED_DF <- merge(
+    MAIN_DF_S[MAIN_DF_S$method == "Scaled GUIDANCE",],
+    MAIN_DF[MAIN_DF$method == "norMD",],
+    by=c("rand", "msa", "seq"))
+
+  COMBINED_DF[, "score"] <- COMBINED_DF[, "score.x"] + COMBINED_DF[, "score.y"]
+  COMBINED_DF[, "method"] <- "sG + N"
+  COMBINED_DF[,"score.x"] <- NULL
+  COMBINED_DF[,"score.y"] <- NULL
+  COMBINED_DF[,"method.x"] <- NULL
+  COMBINED_DF[,"method.y"] <- NULL
+
+
 
   #MAIN_DF <- rbind(MAIN_DF_S, MAIN_DF)
   MAIN_DF <- rbind(MAIN_DF, COMBINED_DF)
