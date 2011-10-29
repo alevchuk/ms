@@ -44,11 +44,17 @@ CONVERT_FASTA_TO_TAB <- paste(script_dir,
 
 # How to use this script
 usage_and_quit <- function() {
-  cat(paste(script_name, "is a utility for MSA alignment cleanup", "\n\n"))
-  cat(paste("Usage:", script_name, " <in-msa>", "\n\n"))
+  cat(paste(script_name,
+    "finds nonmember contaminations in protein sequence families",
+    "\n\n"))
+  cat(paste("Usage:", script_name, " <in-msa> [--old]", "\n\n"))
   cat(paste(
     "Required Arguments",
-    "  <in-msa>  Input multiple sequence alignment in TAB or FASTA format.",
+    "  <in-msa>  Input TAB (id/seq 2-column) or FASTA",
+    "            NOTE: MSA gaps will be ignored",
+    "",
+    "  --old     Optional. Use the old norMD+GUIDANCE",
+    "            intercalibraton algorithm",
     "",
     sep="\n"))
   quit()
@@ -57,9 +63,20 @@ usage_and_quit <- function() {
 # Check number of arguments
 script_args <- commandArgs(trailingOnly=T)
 if(length(script_args) == 0) usage_and_quit()
-if(length(script_args) != 1) {
+if(length(script_args) != 1 && length(script_args) != 2) {
   cat("ERROR: Invalid number of arguments", length(script_args), "\n")
   usage_and_quit()
+}
+
+OLD = F
+if(length(script_args) == 2) {
+  if(all(script_args != "--old")) {
+    cat("ERROR: One of the two arguments must be \"--old\"", "\n")
+    usage_and_quit()
+  } else {
+    OLD = T
+    script_args <- script_args[script_args != "--old"]
+  }
 }
 
 # Get arguments
