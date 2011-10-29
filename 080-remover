@@ -54,7 +54,7 @@ usage_and_quit <- function() {
     "            NOTE: MSA gaps will be ignored",
     "",
     "  --old     Optional. Use the old norMD+GUIDANCE",
-    "            intercalibraton algorithm",
+    "            intercalibration algorithm",
     "",
     sep="\n"))
   quit()
@@ -139,9 +139,8 @@ SH(paste("cat ", OUT_DIR, "/msa-fasta-tab-nogaps.txt | ",
 
 
 
-
-
-
+# ==============================
+if (OLD) { # Indentless 1
 
 cat("\n")
 cat("Scoring with NorMD...\n")
@@ -171,8 +170,8 @@ print(SH(cmd))
 N_SCORES <- read.table(NORMD_RESULTS, sep="\t")
 colnames(N_SCORES) <- c('SEQUENCE_NAME', 'SEQUENCE_SCORE')
 
-
-
+}
+# ==============================
 
 
 cat("\n")
@@ -207,6 +206,8 @@ G_SCORES <- read.table(G_SCORES_FILE, sep="\t", header=T)
 
 
 
+# ==============================
+if (OLD) { # Indentless 2
 cat("\n")
 cat("Merging the two score tables...\n")
 
@@ -338,16 +339,16 @@ sapply(normd_cutoffs, function(normd_cutoff) {
     }
   }
 
-  ## ++++++++++ bug search / check +++++++++++++
-  print(both)
-  cat("NorMD cutoff", normd_cutoff, "\n")
-  print(as.numeric(m_df$matthews))
-  print(as.character(m_df$counts))
-  cat("Guidance M. best cutoff: ")
-  print(g_matt_best_cutoff)
-  cat("NorMD M. best cutoff: ")
-  print(n_matt_best_cutoff)
-  cat("+++++++++++++++++++++++++++++++++++++\n")
+  # ## ++++++++++ bug search / check +++++++++++++
+  # print(both)
+  # cat("NorMD cutoff", normd_cutoff, "\n")
+  # print(as.numeric(m_df$matthews))
+  # print(as.character(m_df$counts))
+  # cat("Guidance M. best cutoff: ")
+  # print(g_matt_best_cutoff)
+  # cat("NorMD M. best cutoff: ")
+  # print(n_matt_best_cutoff)
+  # cat("+++++++++++++++++++++++++++++++++++++\n")
 
 })
 
@@ -385,16 +386,21 @@ CUTOFF <- n_matt_best_cutoff
 cat("NorMD Matthew's coefficient maximization Cutoff:\t", CUTOFF, "\n", sep="")
 
 
+# ==============================
+# Indentless 2 ends here
+} else {
+  print("New")
+}
 
 
 cat("\n")
 cat("Removing badly aligned or unrelated sequences...\n")
-BAD_SEQUENCES <- which(both[, 'n_scr'] < CUTOFF)
+BAD_SEQUENCES <- which(both[, 'g_scr'] < CUTOFF)
 
 both[,'REMOVE?'] <- 'Keep'
 both[BAD_SEQUENCES,'REMOVE?'] <- 'Remove'
 
-results <- both[rev(order(both[,'n_scr'])),]
+results <- both[rev(order(both[,'g_scr'])),]
 results_file <-
   paste(OUT_DIR, "/results.txt", sep="")
 
@@ -402,3 +408,4 @@ write.table(file=results_file, results, sep="\t")
 print(results)
 
 cat("Number of sequences removed:\t", length(BAD_SEQUENCES), "\n", sep="")
+#warnings()
