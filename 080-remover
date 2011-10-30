@@ -389,7 +389,15 @@ cat("NorMD Matthew's coefficient maximization Cutoff:\t", CUTOFF, "\n", sep="")
 # ==============================
 # Indentless 2 ends here
 } else {
-  print("New")
+  print(G_SCORES)
+  scores <- G_SCORES$SEQUENCE_SCORE
+  scores <- scores - min(scores)
+  scores <- scores / max(scores)
+
+  both <- G_SCORES
+  both[,"SEQUENCE_SCORE"] <- scores
+  names(both)[names(both) == "SEQUENCE_SCORE"] <- "g_scr"
+  CUTOFF <- 0.5
 }
 
 
