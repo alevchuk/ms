@@ -385,30 +385,37 @@ CUTOFF <- n_matt_best_cutoff
 
 cat("NorMD Matthew's coefficient maximization Cutoff:\t", CUTOFF, "\n", sep="")
 
+both$final_scr <- both$g_scr
 
 # ==============================
 # Indentless 2 ends here
 } else {
-  print(G_SCORES)
   scores <- G_SCORES$SEQUENCE_SCORE
-  scores <- scores - min(scores)
-  scores <- scores / max(scores)
+
+  if (min(scores) > 0.8) { # They are good, don't butcher them
+    CUTOFF <- 0
+  } else {
+    scores <- scores - min(scores)
+    scores <- scores / max(scores)
+
+
+    CUTOFF <- 0.5
+  }
 
   both <- G_SCORES
-  both[,"SEQUENCE_SCORE"] <- scores
+  both[,"final_scr"] <- scores
   names(both)[names(both) == "SEQUENCE_SCORE"] <- "g_scr"
-  CUTOFF <- 0.5
 }
 
 
 cat("\n")
 cat("Removing badly aligned or unrelated sequences...\n")
-BAD_SEQUENCES <- which(both[, 'g_scr'] < CUTOFF)
+BAD_SEQUENCES <- which(both[, 'final_scr'] < CUTOFF)
 
 both[,'REMOVE?'] <- 'Keep'
 both[BAD_SEQUENCES,'REMOVE?'] <- 'Remove'
 
-results <- both[rev(order(both[,'g_scr'])),]
+results <- both[rev(order(both[,'final_scr'])),]
 results_file <-
   paste(OUT_DIR, "/results.txt", sep="")
 
