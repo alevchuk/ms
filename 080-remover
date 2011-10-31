@@ -121,7 +121,9 @@ cat("Re-shaping input MSA data format...\n")
 PREPARED_FASTA_FILE_INPUT <- 
   paste(OUT_DIR, "/msa-fasta-tab-nogaps-fasta.txt", sep="")
 
+INPUT_TYPE <- "FASTA"
 if (ncol(read.table(MSA_FASTA, sep="\t")) == 2) { # fasta-TAB format detection
+  INPUT_TYPE <- "TAB"
   SH(paste("cp ", MSA_FASTA, " ", 
     OUT_DIR, "/msa-fasta-tab.txt && echo 'Convert to tab Skipped'", sep=""))
 } else {
@@ -447,10 +449,20 @@ keeps <-
 #print(keeps)
 #q()
 
+
 if (any(BAD_SEQUENCES)) {
   out_tab <- cbind(keeps, as.character(in_fasta_tab[keeps,]))
+
   write.table(file=REVISED_FILE, out_tab,
     quote=F, row.names=F, col.names=F, sep="\t")
+
+  if (INPUT_TYPE == "FASTA") {
+    invisible(
+    SH(paste("cat ", REVISED_FILE,
+    " | awk -F\"\\t\" '{print \">\" $1 \"\\n\" $2}'",
+    " > ", REVISED_FILE, ".fasta; rm ", REVISED_FILE,  sep=""))
+    )
+  }
 }
 
 cat("Number of sequences removed:\t", length(BAD_SEQUENCES), "\n", sep="")
