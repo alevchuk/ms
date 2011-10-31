@@ -28,14 +28,14 @@ Installing:
   One command is all it takes. Simply run: make.
   Takes about 4 minutes. Installs to <project>/opt - a local project directory.
 
-Running the MSA cleanup utility:
-  You can use the classifier right away. Simply run: ./008-remover <x.fasta>
-  but replace <x.fasta> with a valid path to any FASTA file.
-  For usage information run "./008-remover" without any arguments.
+Running the protein sequence family cleanup:
+  You can detect nonmember contaminates by running: ./008-remover <x.fasta>
+  replace <x.fasta> with a valid path to any FASTA file. For usage information
+  run "./008-remover" without any arguments.
 
 Running the complete experiment:
-  Data is not included in this code repository.
-  Follow data/DATA_README for downloading current versions of CDD and Uniprot.
+  Data is not included in this code repository. Follow data/DATA_README for
+  downloading current versions of CDD and Uniprot.
 
   Once data tar.gz are downloaded, run each command manually:
   002-start, 004-reshape-cdd, 006-reshape-uniprot, 008-sample, ...
