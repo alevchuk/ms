@@ -392,7 +392,8 @@ both$final_scr <- both$g_scr
 } else {
   scores <- G_SCORES$SEQUENCE_SCORE
 
-  if (min(scores) > 0.8) { # They are good, don't butcher them
+  # The safety threshold
+  if (min(scores) > 0.7) { # They are good, don't butcher them
     CUTOFF <- 0
   } else {
     scores <- scores - min(scores)
@@ -413,7 +414,10 @@ cat("Removing badly aligned or unrelated sequences...\n")
 BAD_SEQUENCES <- which(both[, 'final_scr'] < CUTOFF)
 
 both[,'REMOVE?'] <- 'Keep'
-both[BAD_SEQUENCES,'REMOVE?'] <- 'Remove'
+if (any(BAD_SEQUENCES)) {
+  both[BAD_SEQUENCES, 'REMOVE?'] <- 'Remove'
+}
+
 
 results <- both[rev(order(both[,'final_scr'])),]
 results_file <-
@@ -421,6 +425,33 @@ results_file <-
 
 write.table(file=results_file, results, sep="\t")
 print(results)
+
+
+# Load the actual sequences
+REVISED_FILE <- paste(MSA_FASTA, "-cleaned.tab", sep="")
+in_fasta_tab_file <- paste(OUT_DIR, "/msa-fasta-tab.txt", sep="")
+in_fasta_tab <- read.table(file=in_fasta_tab_file, row.names=1, sep="\t")
+
+# Hack: -'s collapsed in upstream :(
+rownames(in_fasta_tab) <- gsub("-", "", rownames(in_fasta_tab))
+
+keeps <- 
+  as.character(results[results[,'REMOVE?'] == 'Keep',][,c("SEQUENCE_NAME")])
+
+
+#options(width=10000)
+#print("---------------")
+#print(in_fasta_tab[keeps,])
+#print(rownames(in_fasta_tab))
+#print("---------------")
+#print(keeps)
+#q()
+
+if (any(BAD_SEQUENCES)) {
+  out_tab <- cbind(keeps, as.character(in_fasta_tab[keeps,]))
+  write.table(file=REVISED_FILE, out_tab,
+    quote=F, row.names=F, col.names=F, sep="\t")
+}
 
 cat("Number of sequences removed:\t", length(BAD_SEQUENCES), "\n", sep="")
 #warnings()

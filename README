@@ -29,8 +29,11 @@ Installing:
   Installs everithing is <project>/opt - the local project directory.
 
 Running the MSA cleanup utility:
-  You can use the classifier right away. Simply run the ./008-remover
-  and it will print out the usage help.
+  You can use the classifier right away. Simply run: 
+    ./008-remover <x.fasta>
+
+  but replace <x.fasta> with a valid path to a FASTA file.
+  For usage information run "./008-remover" without any arguments.
 
 Running the complete experiment:
   Data is not included in this code repository. CDD and Uniprot are sufficient.
